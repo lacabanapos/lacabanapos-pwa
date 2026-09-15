@@ -1,0 +1,25 @@
+{
+  "name": "La Cabaña - Terminal Móvil",
+  "short_name": "La Cabaña",
+  "description": "Terminal de pedidos móvil para meseros y cocina",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0f",
+  "theme_color": "#d4af37",
+  "lang": "es-EC",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
