@@ -40,10 +40,13 @@ export default function Waiter() {
       return;
     }
     loadData();
-    const interval = setInterval(() => {
-      if (tab === 'orders') loadActiveOrders();
-    }, 3000);
-    return () => clearInterval(interval);
+    // Realtime subscription for orders tab
+    const channel = supabase.channel(`waiter-orders-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `waiter_id=eq.${user.id}` }, () => {
+        if (tab === 'orders') loadActiveOrders();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, [user, locationId, tab]);
 
   async function loadData() {
@@ -218,6 +221,18 @@ export default function Waiter() {
     return filtered;
   }
 
+  async function cancelOrder(id: string) {
+    if (!confirm('¿Anular esta orden?')) return;
+    try {
+      const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
+      if (error) throw error;
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      loadActiveOrders();
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  }
+
   function formatDate(ts: string) {
     if (!ts) return '';
     return new Date(ts).toLocaleDateString('es-EC') + ' ' + new Date(ts).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
@@ -350,6 +365,11 @@ export default function Waiter() {
                         </span>
                       ))}
                     </div>
+                    {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
+                      <button onClick={() => cancelOrder(o.id)} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.08)', color: '#ef4444', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        ANULAR ORDEN
+                      </button>
+                    )}
                   </div>
                 );
               })

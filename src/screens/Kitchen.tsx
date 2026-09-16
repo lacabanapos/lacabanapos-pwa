@@ -36,8 +36,10 @@ export default function Kitchen() {
       return;
     }
     loadOrders();
-    const interval = setInterval(loadOrders, 3000);
-    return () => clearInterval(interval);
+    const channel = supabase.channel(`kitchen-${locationId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `location_id=eq.${locationId}` }, loadOrders)
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, [user, locationId]);
 
   async function loadOrders() {
@@ -103,10 +105,10 @@ export default function Kitchen() {
 
   async function changeStatus(id: string, status: string) {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id);
+      const { error } = await supabase.rpc('update_order_status', {
+        p_order_id: id,
+        p_status: status,
+      });
       if (error) throw error;
       if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
       loadOrders();
@@ -116,12 +118,9 @@ export default function Kitchen() {
   }
 
   async function cancelOrder(id: string) {
-    if (!confirm('Anular orden #' + id + '?')) return;
+    if (!confirm('Anular orden #' + id.slice(0, 8) + '?')) return;
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-        .eq('id', id);
+      const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
       if (error) throw error;
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       loadOrders();
