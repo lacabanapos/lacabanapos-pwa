@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types';
@@ -21,7 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function Kitchen() {
-  const { user, logout } = useAuth();
+  const { user, locationId, locationName, logout } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState('all');
@@ -31,20 +31,22 @@ export default function Kitchen() {
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !locationId) {
       navigate('/login');
       return;
     }
     loadOrders();
     const interval = setInterval(loadOrders, 3000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, locationId]);
 
   async function loadOrders() {
+    if (!locationId) return;
     try {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*), profiles!orders_waiter_id_fkey(username)')
+        .eq('location_id', locationId)
         .in('status', ['RECEIVED', 'PREPARING', 'READY'])
         .order('created_at', { ascending: true });
 
@@ -153,7 +155,7 @@ export default function Kitchen() {
             </svg>
           </div>
           <div>
-            <h1>Cocina / Asador</h1>
+            <h1>{locationName || 'Cocina'}</h1>
             <small>{orders.length} órdenes activas</small>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Product, Order, CartItem, Category } from '../types';
@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function Waiter() {
-  const { user, logout } = useAuth();
+  const { user, locationId, locationName, logout } = useAuth();
   const navigate = useNavigate();
 
   const [tab, setTab] = useState<'menu' | 'orders' | 'history'>('menu');
@@ -29,14 +29,13 @@ export default function Waiter() {
   const [successMsg, setSuccessMsg] = useState('');
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
-  const [showCancelled, setShowCancelled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const knownReadyRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !locationId) {
       navigate('/login');
       return;
     }
@@ -45,12 +44,14 @@ export default function Waiter() {
       if (tab === 'orders') loadActiveOrders();
     }, 3000);
     return () => clearInterval(interval);
-  }, [user, tab]);
+  }, [user, locationId, tab]);
 
   async function loadData() {
+    if (!locationId) return;
     try {
       const [prodsRes, catsRes] = await Promise.all([
-        supabase.from('products').select('*, categories!products_category_id_fkey(name)').eq('active', true).order('sort_order'),
+        supabase.from('products').select('*, categories!products_category_id_fkey(name)')
+          .eq('active', true).eq('location_id', locationId).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
       ]);
 
@@ -71,12 +72,13 @@ export default function Waiter() {
   }
 
   async function loadActiveOrders() {
-    if (!user) return;
+    if (!user || !locationId) return;
     try {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .eq('waiter_id', user.id)
+        .eq('location_id', locationId)
         .in('status', ['RECEIVED', 'PREPARING', 'READY'])
         .order('created_at', { ascending: false });
 
@@ -90,12 +92,13 @@ export default function Waiter() {
   }
 
   async function loadHistory() {
-    if (!user) return;
+    if (!user || !locationId) return;
     try {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .eq('waiter_id', user.id)
+        .eq('location_id', locationId)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -169,7 +172,7 @@ export default function Waiter() {
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
   async function sendOrder() {
-    if (!cart.length || !user) return;
+    if (!cart.length || !user || !locationId) return;
     setSending(true);
     try {
       const items = cart.map((c) => ({
@@ -185,6 +188,7 @@ export default function Waiter() {
         p_waiter_id: user.id,
         p_notes: orderNotes.trim() || null,
         p_items: items,
+        p_location_id: locationId,
       });
 
       if (error) throw error;
@@ -235,7 +239,7 @@ export default function Waiter() {
             </svg>
           </div>
           <div>
-            <h1>La Cabaña</h1>
+            <h1>{locationName || 'La Cabaña'}</h1>
             <span className="waiter-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -415,7 +419,7 @@ export default function Waiter() {
                     </div>
                     <div className="qty-ctrl">
                       <button className={`qty-btn ${item.qty <= 1 ? 'del' : ''}`} onClick={() => updateQty(i, -1)}>
-                        {item.qty <= 1 ? '🗑' : '−'}
+                        {item.qty <= 1 ? 'X' : '-'}
                       </button>
                       <span className="qty-val">{item.qty}</span>
                       <button className="qty-btn" onClick={() => updateQty(i, 1)}>+</button>

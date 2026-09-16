@@ -1,8 +1,31 @@
-export interface User {
+﻿export interface User {
   id: string;
   username: string;
   display_name?: string;
   role: 'OWNER' | 'ADMIN' | 'CAJA' | 'MESERO' | 'COCINA' | 'ASADOR';
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  business_id: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface LocationMembership {
+  id: string;
+  location_id: string;
+  profile_id: string;
+  role: string;
+  active: boolean;
+}
+
+export interface LocationUser {
+  user_id: string;
+  username: string;
+  display_name: string;
+  user_role: string;
 }
 
 export interface Product {
