@@ -44,13 +44,18 @@ export default function Kitchen() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*, order_items(*)')
+        .select('*, order_items(*), profiles!orders_waiter_id_fkey(username)')
         .in('status', ['RECEIVED', 'PREPARING', 'READY'])
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      const newOrders = (data || []) as Order[];
+      const newOrders = (data || []).map((o: any) => ({
+        ...o,
+        waiter_name: o.profiles?.username || '',
+        profiles: undefined,
+      })) as Order[];
+
       checkNewOrders(newOrders);
       setOrders(newOrders);
     } catch (err) {
@@ -195,7 +200,6 @@ export default function Kitchen() {
                 <div className="order-inner">
                   <div className="order-waiter">
                     <span className="waiter-name">{order.waiter_name}</span>
-                    <span>${(order.total || 0).toFixed(2)}</span>
                   </div>
                   <div className="order-items">
                     {order.items?.map((item) => (
@@ -205,7 +209,7 @@ export default function Kitchen() {
                           {item.product_name}
                           {item.notes && <span className="oi-notes">{item.notes}</span>}
                         </div>
-                        <span className="oi-price">${(item.unit_price * item.quantity).toFixed(2)}</span>
+                        <span className="oi-price">${((item.unit_price_cents * item.quantity) / 100).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

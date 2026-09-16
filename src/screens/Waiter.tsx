@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { Product, Order, CartItem } from '../types';
+import { Product, Order, CartItem, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,8 +18,8 @@ export default function Waiter() {
 
   const [tab, setTab] = useState<'menu' | 'orders' | 'history'>('menu');
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCat, setSelectedCat] = useState('Todos');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCat, setSelectedCat] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState('');
@@ -40,29 +40,31 @@ export default function Waiter() {
       navigate('/login');
       return;
     }
-    loadProducts();
+    loadData();
     const interval = setInterval(() => {
       if (tab === 'orders') loadActiveOrders();
     }, 3000);
     return () => clearInterval(interval);
   }, [user, tab]);
 
-  async function loadProducts() {
+  async function loadData() {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('active', true)
-        .order('sort_order');
+      const [prodsRes, catsRes] = await Promise.all([
+        supabase.from('products').select('*, categories!products_category_id_fkey(name)').eq('active', true).order('sort_order'),
+        supabase.from('categories').select('*').eq('active', true).order('sort_order'),
+      ]);
 
-      if (error) throw error;
-      const prods = (data || []) as Product[];
+      if (prodsRes.error) throw prodsRes.error;
+      if (catsRes.error) throw catsRes.error;
+
+      const prods = (prodsRes.data || []).map((p: any) => ({
+        ...p,
+        category_name: p.categories?.name || '',
+      })) as Product[];
       setProducts(prods);
-
-      const cats = [...new Set(prods.map((p) => p.category))];
-      setCategories(['Todos', ...cats]);
+      setCategories(catsRes.data || []);
     } catch (err) {
-      console.error('Error loading products:', err);
+      console.error('Error loading data:', err);
     } finally {
       setLoading(false);
     }
@@ -74,7 +76,7 @@ export default function Waiter() {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .eq('waiter_name', user.username)
+        .eq('waiter_id', user.id)
         .in('status', ['RECEIVED', 'PREPARING', 'READY'])
         .order('created_at', { ascending: false });
 
@@ -93,7 +95,7 @@ export default function Waiter() {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .eq('waiter_name', user.username)
+        .eq('waiter_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -163,7 +165,7 @@ export default function Waiter() {
     setCart((prev) => prev.map((c, i) => i === idx ? { ...c, notes: note } : c));
   }
 
-  const cartTotal = cart.reduce((sum, c) => sum + (c.price_cents / 100) * c.qty, 0);
+  const cartTotal = cart.reduce((sum, c) => sum + c.price_cents * c.qty, 0);
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
   async function sendOrder() {
@@ -174,13 +176,13 @@ export default function Waiter() {
         product_id: c.id,
         product_name: c.name,
         quantity: c.qty,
-        unit_price: c.price_cents / 100,
+        unit_price_cents: c.price_cents,
         notes: c.notes || null,
       }));
 
       const { data, error } = await supabase.rpc('create_order', {
         p_customer_name: customerName.trim() || 'Sin nombre',
-        p_waiter_name: user.username,
+        p_waiter_id: user.id,
         p_notes: orderNotes.trim() || null,
         p_items: items,
       });
@@ -202,7 +204,9 @@ export default function Waiter() {
   }
 
   function filteredProducts() {
-    let filtered = selectedCat === 'Todos' ? products : products.filter((p) => p.category === selectedCat);
+    let filtered = selectedCat === 'all'
+      ? products
+      : products.filter((p) => p.category_id === selectedCat);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter((p) => p.name.toLowerCase().includes(q));
@@ -263,8 +267,9 @@ export default function Waiter() {
             <input type="text" placeholder="Buscar producto..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
           </div>
           <div className="cats">
+            <button className={`cat ${selectedCat === 'all' ? 'active' : ''}`} onClick={() => setSelectedCat('all')}>Todos</button>
             {categories.map((c) => (
-              <button key={c} className={`cat ${c === selectedCat ? 'active' : ''}`} onClick={() => setSelectedCat(c)}>{c}</button>
+              <button key={c.id} className={`cat ${c.id === selectedCat ? 'active' : ''}`} onClick={() => setSelectedCat(c.id)}>{c.name}</button>
             ))}
           </div>
           <div className="products">
@@ -290,7 +295,7 @@ export default function Waiter() {
               <div className="cart-info">
                 <span className="cart-badge">{cartCount}</span>
                 <div>
-                  <div className="cart-total">${cartTotal.toFixed(2)}</div>
+                  <div className="cart-total">${(cartTotal / 100).toFixed(2)}</div>
                   <div className="cart-label">items</div>
                 </div>
               </div>
@@ -331,7 +336,6 @@ export default function Waiter() {
                     </div>
                     <div className="order-meta">
                       <span>{o.waiter_name}</span>
-                      <span>${(o.total || 0).toFixed(2)}</span>
                     </div>
                     <div className="order-items-list">
                       {o.items?.map((it) => (
@@ -368,11 +372,7 @@ export default function Waiter() {
                     <span className={`order-status ${o.status}`}>{STATUS_LABELS[o.status]}</span>
                   </div>
                   <div className="order-meta">
-                    <span>{o.waiter_name}</span>
                     <span className="order-date">{formatDate(o.created_at)}</span>
-                  </div>
-                  <div className="order-meta">
-                    <span>${(o.total || 0).toFixed(2)}</span>
                   </div>
                   <div className="order-items-list">
                     {o.items?.map((it) => (
@@ -428,7 +428,7 @@ export default function Waiter() {
               <textarea placeholder="Nota general del pedido (opcional)..." value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} />
             </div>
             <div className="sheet-footer">
-              <div className="sheet-total"><span>TOTAL</span><span className="amount">${cartTotal.toFixed(2)}</span></div>
+              <div className="sheet-total"><span>TOTAL</span><span className="amount">${(cartTotal / 100).toFixed(2)}</span></div>
               <button className="btn-send" onClick={sendOrder} disabled={sending}>
                 {sending ? 'Enviando...' : 'ENVIAR ORDEN'}
               </button>
