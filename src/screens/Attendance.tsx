@@ -59,6 +59,7 @@ export default function Attendance() {
       const { data, error } = await supabase.rpc('login_pos_user', {
         p_username: username.trim().toLowerCase(),
         p_password: password,
+        p_location_id: locationId || null,
       });
       if (error) throw error;
       if (!data || data.error) throw new Error(data?.error || 'Credenciales incorrectas');
@@ -100,7 +101,7 @@ export default function Attendance() {
         p_type: nextType,
         p_device_id: getDeviceId(),
         p_client_event_id: clientEventId,
-        p_code: urlCode || null,
+        p_code: code || null,
         p_latitude: geoToUse?.lat || null,
         p_longitude: geoToUse?.lng || null,
         p_accuracy: geoToUse?.accuracy || null,

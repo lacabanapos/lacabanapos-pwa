@@ -67,7 +67,8 @@ export interface OrderItem {
   product_id: string;
   product_name: string;
   quantity: number;
-  unit_price_cents: number;
+  unit_price_cents?: number;
+  unit_price?: number;
   notes?: string;
 }
 

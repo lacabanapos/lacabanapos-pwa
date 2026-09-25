@@ -86,7 +86,10 @@ export default function Waiter() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const orders = (data || []) as Order[];
+      const orders = (data || []).map((order: any) => ({
+        ...order,
+        items: order.order_items || [],
+      })) as Order[];
       checkReadyOrders(orders);
       setActiveOrders(orders);
     } catch (err) {
@@ -106,7 +109,10 @@ export default function Waiter() {
         .limit(50);
 
       if (error) throw error;
-      setHistoryOrders((data || []) as Order[]);
+      setHistoryOrders((data || []).map((order: any) => ({
+        ...order,
+        items: order.order_items || [],
+      })) as Order[]);
     } catch (err) {
       console.error('Error loading history:', err);
     }
@@ -183,6 +189,7 @@ export default function Waiter() {
         product_name: c.name,
         quantity: c.qty,
         unit_price_cents: c.price_cents,
+        unit_price: c.price_cents / 100,
         notes: c.notes || null,
       }));
 

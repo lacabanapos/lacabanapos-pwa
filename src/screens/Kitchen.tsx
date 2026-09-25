@@ -56,6 +56,12 @@ export default function Kitchen() {
 
       const newOrders = (data || []).map((o: any) => ({
         ...o,
+        // PostgREST returns the nested relation as order_items; the UI
+        // renders the normalized items property.
+        items: (o.order_items || []).map((item: any) => ({
+          ...item,
+          unit_price_cents: item.unit_price_cents ?? Math.round(Number(item.unit_price || 0) * 100),
+        })),
         waiter_name: o.profiles?.username || '',
         profiles: undefined,
       })) as Order[];
@@ -210,7 +216,7 @@ export default function Kitchen() {
                           {item.product_name}
                           {item.notes && <span className="oi-notes">{item.notes}</span>}
                         </div>
-                        <span className="oi-price">${((item.unit_price_cents * item.quantity) / 100).toFixed(2)}</span>
+                        <span className="oi-price">${(((item.unit_price_cents ?? Math.round((item.unit_price || 0) * 100)) * item.quantity) / 100).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
