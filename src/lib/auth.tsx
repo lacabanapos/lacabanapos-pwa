@@ -73,6 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // The selector stays current while the phone is waiting at login. Staff
+  // changes made on the desktop therefore do not require clearing browser
+  // data or reopening the PWA.
+  useEffect(() => {
+    if (!locationId || user) return;
+    void loadLocationUsers(locationId);
+    const timer = window.setInterval(() => void loadLocationUsers(locationId), 15000);
+    return () => window.clearInterval(timer);
+  }, [locationId, user]);
+
   async function setLocation(locId: string, locName: string) {
     setLocationId(locId);
     setLocationName(locName);

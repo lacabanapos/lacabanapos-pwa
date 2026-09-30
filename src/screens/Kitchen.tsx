@@ -62,7 +62,9 @@ export default function Kitchen() {
           ...item,
           unit_price_cents: item.unit_price_cents ?? Math.round(Number(item.unit_price || 0) * 100),
         })),
-        waiter_name: o.profiles?.username || '',
+        // New orders persist the sender name.  The relation is only a
+        // compatibility fallback for orders created before that fix.
+        waiter_name: o.waiter_name || o.profiles?.display_name || o.profiles?.username || 'Mesero no identificado',
         profiles: undefined,
       })) as Order[];
 
