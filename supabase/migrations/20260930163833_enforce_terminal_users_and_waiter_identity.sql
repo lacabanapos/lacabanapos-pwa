@@ -26,13 +26,6 @@ CREATE TRIGGER orders_set_waiter_name
 BEFORE INSERT OR UPDATE OF waiter_id, waiter_name ON public.orders
 FOR EACH ROW EXECUTE FUNCTION public.set_order_waiter_name();
 
--- Repair the existing active orders as well.
-UPDATE public.orders o
-   SET waiter_name = COALESCE(NULLIF(p.display_name, ''), p.username, '')
-  FROM public.profiles p
- WHERE o.waiter_id = p.id
-   AND COALESCE(o.waiter_name, '') = '';
-
 CREATE OR REPLACE FUNCTION public.sync_pos_users(
   p_location_id UUID,
   p_users JSONB
@@ -61,8 +54,11 @@ BEGIN
   FOR v_user IN SELECT value FROM jsonb_array_elements(COALESCE(p_users, '[]'::jsonb))
   LOOP
     v_username := LOWER(TRIM(v_user->>'username'));
+    v_username := REGEXP_REPLACE(v_username, '[^-a-z0-9._]', '_', 'g');
+    IF LENGTH(v_username) < 3 THEN v_username := v_username || '_pos'; END IF;
     IF v_username = '' THEN CONTINUE; END IF;
-    v_role := COALESCE(v_user->>'role', 'MESERO');
+    v_role := UPPER(COALESCE(v_user->>'role', 'MESERO'));
+    IF v_role NOT IN ('ADMIN', 'CAJA', 'MESERO', 'COCINA') THEN v_role := 'MESERO'; END IF;
     v_display_name := COALESCE(NULLIF(v_user->>'display_name', ''), v_username);
     v_password_hash := COALESCE(v_user->>'password_hash', '');
     v_active := COALESCE((v_user->>'active')::BOOLEAN, true);
@@ -149,7 +145,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.login_pos_user(
   p_username TEXT,
   p_password TEXT,
-  p_location_id UUID
+  p_location_id UUID DEFAULT NULL
 )
 RETURNS TABLE (user_id UUID, username TEXT, display_name TEXT, user_role TEXT, location_name TEXT)
 LANGUAGE plpgsql
@@ -160,6 +156,7 @@ DECLARE
   v_location_name TEXT;
   v_password_hash TEXT;
 BEGIN
+  IF p_location_id IS NULL THEN RAISE EXCEPTION 'Seleccione una terminal'; END IF;
   SELECT l.name INTO v_location_name FROM locations l WHERE l.id = p_location_id AND l.active = true;
   IF v_location_name IS NULL THEN RAISE EXCEPTION 'Terminal no encontrada'; END IF;
 
