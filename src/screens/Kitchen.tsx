@@ -45,14 +45,20 @@ export default function Kitchen() {
   async function loadOrders() {
     if (!locationId) return;
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*), profiles!orders_waiter_id_fkey(username)')
-        .eq('location_id', locationId)
-        .in('status', ['RECEIVED', 'PREPARING', 'READY'])
-        .order('created_at', { ascending: true });
+      const [ordersResult, usersResult] = await Promise.all([
+        supabase.from('orders')
+          .select('*, order_items(*)')
+          .eq('location_id', locationId)
+          .in('status', ['RECEIVED', 'PREPARING', 'READY'])
+          .order('created_at', { ascending: true }),
+        supabase.rpc('get_location_users', { p_location_id: locationId }),
+      ]);
+
+      const { data, error } = ordersResult;
 
       if (error) throw error;
+      if (usersResult.error) throw usersResult.error;
+      const waiterNames = new Map((usersResult.data || []).map((entry: any) => [entry.user_id, entry.display_name || entry.username]));
 
       const newOrders = (data || []).map((o: any) => ({
         ...o,
@@ -64,8 +70,7 @@ export default function Kitchen() {
         })),
         // New orders persist the sender name.  The relation is only a
         // compatibility fallback for orders created before that fix.
-        waiter_name: o.waiter_name || o.profiles?.display_name || o.profiles?.username || 'Mesero no identificado',
-        profiles: undefined,
+        waiter_name: o.waiter_name || waiterNames.get(o.waiter_id) || 'Mesero no identificado',
       })) as Order[];
 
       checkNewOrders(newOrders);
