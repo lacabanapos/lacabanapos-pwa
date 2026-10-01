@@ -62,16 +62,17 @@ export default function Attendance() {
         p_location_id: locationId || null,
       });
       if (error) throw error;
-      if (!data || data.error) throw new Error(data?.error || 'Credenciales incorrectas');
+      const loginRow = Array.isArray(data) ? data[0] : data;
+      if (!loginRow || loginRow.error) throw new Error(loginRow?.error || 'Credenciales incorrectas');
 
-      setProfile({ id: data.user_id, username: data.username, role: data.role });
-      setWorkerName(data.username);
+      setProfile({ id: loginRow.user_id, username: loginRow.username, role: loginRow.user_role });
+      setWorkerName(loginRow.username);
 
       // Check last attendance record
       const { data: lastRecord } = await supabase
         .from('attendance_records')
         .select('type')
-        .eq('user_id', data.user_id)
+        .eq('user_id', loginRow.user_id)
         .order('recorded_at', { ascending: false })
         .limit(1)
         .maybeSingle();
