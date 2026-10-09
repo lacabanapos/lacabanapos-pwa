@@ -15,6 +15,7 @@ interface AuthContextType {
   locationUsers: LocationUser[];
   loading: boolean;
   login: (userId: string, password: string) => Promise<void>;
+  loginSuperadmin: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setLocation: (locationId: string, locationName: string) => Promise<void>;
   isAdmin: boolean;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   locationUsers: [],
   loading: true,
   login: async () => {},
+  loginSuperadmin: async () => {},
   logout: () => {},
   setLocation: async () => {},
   isAdmin: false,
@@ -127,6 +129,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pwa_location_name', u.location_name);
   }
 
+  async function loginSuperadmin(email: string, password: string) {
+    localStorage.removeItem(PWA_TOKEN_KEY);
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (authError) throw authError;
+
+    try {
+      const { data, error } = await supabase.rpc('pos_superadmin_create_operator_session');
+      if (error) throw error;
+      const session = Array.isArray(data) ? data[0] : data;
+      if (!session?.session_token || !session?.location_id || !session?.user_id) {
+        throw new Error('No se pudo iniciar la sesión global.');
+      }
+
+      const owner: User = {
+        id: session.user_id,
+        username: session.username || email.trim().toLowerCase(),
+        display_name: session.display_name || 'Propietario',
+        role: 'OWNER',
+      };
+      setUser(owner);
+      setLocationId(session.location_id);
+      setLocationName(session.business_name || session.location_name || 'Administración del negocio');
+      localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
+      localStorage.setItem('pwa_user', JSON.stringify(owner));
+      localStorage.setItem('pwa_location_id', session.location_id);
+      localStorage.setItem('pwa_location_name', session.business_name || session.location_name || 'Administración del negocio');
+    } catch (error) {
+      await supabase.auth.signOut();
+      throw error;
+    }
+  }
+
   function logout() {
     setUser(null);
     setLocationId(null);
@@ -136,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('pwa_location_id');
     localStorage.removeItem('pwa_location_name');
     localStorage.removeItem(PWA_TOKEN_KEY);
+    void supabase.auth.signOut();
   }
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'OWNER';
@@ -144,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, locationId, locationName, locationUsers,
-      loading, login, logout, setLocation, isAdmin, isCocina,
+      loading, login, loginSuperadmin, logout, setLocation, isAdmin, isCocina,
     }}>
       {children}
     </AuthContext.Provider>

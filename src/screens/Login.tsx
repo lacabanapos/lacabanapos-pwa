@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Location } from '../types';
 
 export default function Login() {
-  const { user, locationId, locationName, locationUsers, login, setLocation } = useAuth();
+  const { user, locationId, locationName, locationUsers, login, loginSuperadmin, setLocation } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<'location' | 'user'>(locationId ? 'user' : 'location');
@@ -15,6 +15,9 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(true);
+  const [ownerLogin, setOwnerLogin] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
 
   useEffect(() => {
     if (user && locationId) {
@@ -71,6 +74,20 @@ export default function Login() {
     }
   }
 
+  async function handleOwnerLogin(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await loginSuperadmin(ownerEmail, ownerPassword);
+      navigate('/admin/sucursales');
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo validar el acceso de propietario.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Location selection step
   if (step === 'location') {
     return (
@@ -113,6 +130,21 @@ export default function Login() {
               </button>
             ))}
           </div>
+        )}
+        {!ownerLogin ? (
+          <button className="owner-access-link" onClick={() => { setOwnerLogin(true); setError(''); }}>
+            Acceso de propietario <span>·</span> Crear y administrar sucursales
+          </button>
+        ) : (
+          <form className="owner-login-card" onSubmit={handleOwnerLogin}>
+            <div className="owner-login-heading">Administración del negocio</div>
+            <p>Ingresa con tu cuenta personal. No necesitas elegir una sucursal.</p>
+            <input className="login-input" type="email" autoComplete="username" placeholder="Correo de propietario" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} required />
+            <input className="login-input" type="password" autoComplete="current-password" placeholder="Contraseña" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)} required />
+            {error && <div className="login-err" role="alert">{error}</div>}
+            <button className="login-btn" type="submit" disabled={loading}>{loading ? 'Verificando…' : 'ENTRAR A SUCURSALES'}</button>
+            <button className="owner-back-link" type="button" onClick={() => { setOwnerLogin(false); setOwnerPassword(''); setError(''); }}>Volver a seleccionar terminal</button>
+          </form>
         )}
         <div className="version">v2.0.0 PWA</div>
       </div>

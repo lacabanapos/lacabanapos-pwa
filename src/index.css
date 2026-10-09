@@ -1124,6 +1124,41 @@ html, body, #root {
   line-height: 1.2;
 }
 
+.owner-access-link {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.owner-access-link span { color: var(--text3); padding: 0 3px; }
+
+.owner-login-card {
+  width: min(100%, 420px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.owner-login-heading { color: var(--gold); font-size: 17px; font-weight: 800; }
+.owner-login-card p { color: var(--text2); font-size: 13px; line-height: 1.5; }
+.owner-login-card .login-err { min-height: auto; }
+.owner-back-link { min-height: 44px; border: 0; background: transparent; color: var(--text2); font-weight: 600; cursor: pointer; }
+
+@media (max-height: 760px) {
+  .login-screen { overflow-y: auto; justify-content: flex-start; padding-top: 28px; padding-bottom: 56px; }
+  .login-screen .version { position: static; margin-top: 10px; }
+}
+
 /* User avatar grid */
 .user-avatar-grid {
   display: flex;
