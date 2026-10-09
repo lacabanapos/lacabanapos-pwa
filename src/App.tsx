@@ -4,6 +4,7 @@ import Login from './screens/Login';
 import Kitchen from './screens/Kitchen';
 import Waiter from './screens/Waiter';
 import Attendance from './screens/Attendance';
+import BranchAdmin from './screens/BranchAdmin';
 import { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -18,6 +19,7 @@ function RoleRedirect() {
   if (loading) return <div className="loading"><div className="spinner" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   const role = (user.role || '').toUpperCase();
+  if (role === 'ADMIN' || role === 'OWNER') return <Navigate to="/admin/sucursales" replace />;
   if (role === 'COCINA' || role === 'ASADOR') return <Navigate to="/cocina" replace />;
   return <Navigate to="/mesero" replace />;
 }
@@ -31,6 +33,7 @@ export default function App() {
           <Route path="/cocina" element={<ProtectedRoute><Kitchen /></ProtectedRoute>} />
           <Route path="/mesero" element={<ProtectedRoute><Waiter /></ProtectedRoute>} />
           <Route path="/asistencia" element={<Attendance />} />
+          <Route path="/admin/sucursales" element={<ProtectedRoute><BranchAdmin /></ProtectedRoute>} />
           <Route path="/" element={<RoleRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
