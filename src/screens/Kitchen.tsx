@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getOperatorToken, useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types';
@@ -21,7 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function Kitchen() {
-  const { user, locationId, locationName, logout } = useAuth();
+  const { user, locationId, locationName, logout, ownerInspection, returnToBranches } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState('all');
@@ -163,15 +163,15 @@ export default function Kitchen() {
         <div className="topbar-actions">
           <span className="order-count-badge">{orders.length}</span>
           <div className="status-dot" />
-          {user?.role === 'OWNER' ? (
-            <button className="btn-logout" onClick={() => navigate('/admin/sucursales')}>Sucursales</button>
+          {ownerInspection ? (
+            <button className="btn-logout" onClick={returnToBranches}>Volver a sucursales</button>
           ) : (
             <button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Salir</button>
           )}
         </div>
       </div>
 
-      {user?.role === 'OWNER' && <div className="owner-readonly-banner">Vista de propietario · solo lectura</div>}
+      {ownerInspection && <div className="owner-readonly-banner">Administrando {locationName} con permisos de administrador de esta sucursal.</div>}
 
       <div className="filter-bar">
         {['all', 'RECEIVED', 'PREPARING', 'READY'].map((f) => (
@@ -222,7 +222,7 @@ export default function Kitchen() {
                       </div>
                     ))}
                   </div>
-                  {user?.role !== 'OWNER' && <div className="order-actions">
+                  <div className="order-actions">
                     {order.status === 'RECEIVED' && (
                       <button className="action-btn receive" onClick={() => changeStatus(order.id, 'PREPARING')}>
                         RECIBIDO
@@ -236,7 +236,7 @@ export default function Kitchen() {
                     <button className="action-btn cancel" onClick={() => cancelOrder(order.id)}>
                       ANULAR
                     </button>
-                  </div>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -246,3 +246,4 @@ export default function Kitchen() {
     </div>
   );
 }
+

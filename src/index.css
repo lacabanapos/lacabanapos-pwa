@@ -1260,6 +1260,9 @@ html, body, #root {
 .branch-icon{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:10px;color:var(--gold);background:rgba(255,204,0,.09)}
 .branch-create-row{display:flex;gap:10px;margin-left:52px}
 .branch-create-row input{flex:1;min-width:0;min-height:46px;padding:0 13px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit}
+.branch-create-fields{align-items:end;flex-wrap:wrap}
+.branch-create-fields>label{display:grid;gap:5px;min-width:130px;color:var(--text2);font-size:11px;font-weight:800}
+.branch-create-fields>label input{width:100%;box-sizing:border-box}
 .branch-create-row button,.branch-row button,.branch-pairing-code button{min-height:44px;padding:0 15px;border:0;border-radius:9px;background:var(--gold);color:#17140b;font-weight:900;cursor:pointer}
 .branch-create-row button:disabled,.branch-request-actions button:disabled,.branch-row button:disabled{opacity:.5;cursor:wait}
 .branch-empty{padding:22px;border:1px dashed var(--border);border-radius:10px;color:var(--text2);text-align:center}
@@ -1271,6 +1274,19 @@ html, body, #root {
 .branch-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:none}
 .branch-row-actions .branch-inspect{background:var(--surface3);color:var(--text);border:1px solid var(--border-strong)}
 .branch-row-actions button{white-space:nowrap}
+.branch-row-expanded{flex-wrap:wrap}
+.branch-access-toggle{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--surface3)!important;color:var(--text)!important;border:1px solid var(--border-strong)!important}
+.branch-users-panel{flex:0 0 100%;padding:15px;border-top:1px solid var(--border);margin-top:4px}
+.branch-users-head,.branch-user-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.branch-users-head>div,.branch-user-row>div:first-child{display:grid;gap:4px}
+.branch-users-head span,.branch-user-row span,.branch-users-empty{font-size:12px;color:var(--text2);line-height:1.45}
+.branch-users-head button,.branch-reset-button,.branch-reset-form button{min-height:40px;padding:0 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface3);color:var(--text);font:inherit;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.branch-users-list{display:grid;gap:8px;margin-top:13px}
+.branch-user-row{padding:10px;border:1px solid var(--border);border-radius:8px}
+.branch-reset-form{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.branch-reset-form input{min-width:160px;min-height:40px;padding:0 10px;border-radius:8px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text);font:inherit}
+.branch-reset-form button:first-of-type{background:var(--gold);color:#17140b;border:0}
+.branch-reset-form .branch-cancel-reset{background:transparent}
 .branch-request-actions{display:flex;gap:8px;flex:none}
 .branch-request-actions button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:0 12px;border-radius:8px;font-weight:800;cursor:pointer}
 .branch-request-actions .approve{background:#087b58;color:white;border:1px solid #0ca678}
@@ -1279,5 +1295,6 @@ html, body, #root {
 .branch-pairing-code>div{display:grid;gap:4px;flex:1}
 .branch-pairing-code code{font:800 19px ui-monospace,monospace;letter-spacing:.13em;color:var(--gold);overflow-wrap:anywhere}
 .branch-pairing-code button{display:flex;align-items:center;gap:8px}
-@media(max-width:620px){.branch-admin{height:100dvh;padding:18px 13px calc(36px + env(safe-area-inset-bottom))}.branch-create,.branch-section{padding:15px}.branch-create-row{margin-left:0;flex-direction:column}.branch-create-row button{min-height:48px}.branch-request,.branch-row{align-items:stretch;flex-direction:column}.branch-request-actions{display:grid;grid-template-columns:1fr 1fr}.branch-row-actions{display:grid;grid-template-columns:1fr 1fr}.branch-row-actions button{min-height:48px;white-space:normal}.branch-pairing-code{align-items:stretch;flex-direction:column}.branch-pairing-code button{justify-content:center}}
+@media(max-width:620px){.branch-admin{height:100dvh;padding:18px 13px calc(36px + env(safe-area-inset-bottom))}.branch-create,.branch-section{padding:15px}.branch-create-row{margin-left:0;flex-direction:column;align-items:stretch}.branch-create-row button{min-height:48px}.branch-create-fields>label{width:100%}.branch-request,.branch-row{align-items:stretch;flex-direction:column}.branch-request-actions{display:grid;grid-template-columns:1fr 1fr}.branch-row-actions{display:grid;grid-template-columns:1fr 1fr}.branch-row-actions button{min-height:48px;white-space:normal}.branch-pairing-code{align-items:stretch;flex-direction:column}.branch-pairing-code button{justify-content:center}.branch-users-head,.branch-user-row{align-items:stretch;flex-direction:column}.branch-users-head button,.branch-reset-button{width:100%;min-height:46px}.branch-reset-form{display:grid;grid-template-columns:1fr 1fr}.branch-reset-form input{grid-column:1/-1}.branch-reset-form button{min-height:46px}}
 .owner-readonly-banner{flex:none;padding:8px 14px;background:rgba(212,175,55,.1);border-bottom:1px solid var(--border);color:var(--gold);font-size:12px;font-weight:800;text-align:center}
+
