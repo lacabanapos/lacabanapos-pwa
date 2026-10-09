@@ -131,37 +131,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loginSuperadmin(email: string, password: string) {
     localStorage.removeItem(PWA_TOKEN_KEY);
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
+    const { data, error } = await supabase.rpc('pos_superadmin_login', {
+      p_login: email.trim().toLowerCase(),
+      p_password: password,
     });
-    if (authError) throw authError;
-
-    try {
-      const { data, error } = await supabase.rpc('pos_superadmin_create_operator_session');
-      if (error) throw error;
-      const session = Array.isArray(data) ? data[0] : data;
-      if (!session?.session_token || !session?.location_id || !session?.user_id) {
-        throw new Error('No se pudo iniciar la sesión global.');
-      }
-
-      const owner: User = {
-        id: session.user_id,
-        username: session.username || email.trim().toLowerCase(),
-        display_name: session.display_name || 'Propietario',
-        role: 'OWNER',
-      };
-      setUser(owner);
-      setLocationId(session.location_id);
-      setLocationName(session.business_name || session.location_name || 'Administración del negocio');
-      localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
-      localStorage.setItem('pwa_user', JSON.stringify(owner));
-      localStorage.setItem('pwa_location_id', session.location_id);
-      localStorage.setItem('pwa_location_name', session.business_name || session.location_name || 'Administración del negocio');
-    } catch (error) {
-      await supabase.auth.signOut();
-      throw error;
+    if (error) throw error;
+    const session = Array.isArray(data) ? data[0] : data;
+    if (!session?.session_token || !session?.location_id || !session?.user_id) {
+      throw new Error('No se pudo iniciar la sesión global.');
     }
+
+    const owner: User = {
+      id: session.user_id,
+      username: session.username || email.trim().toLowerCase(),
+      display_name: session.display_name || 'Propietario',
+      role: 'OWNER',
+    };
+    setUser(owner);
+    setLocationId(session.location_id);
+    setLocationName(session.business_name || session.location_name || 'Administración del negocio');
+    localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
+    localStorage.setItem('pwa_user', JSON.stringify(owner));
+    localStorage.setItem('pwa_location_id', session.location_id);
+    localStorage.setItem('pwa_location_name', session.business_name || session.location_name || 'Administración del negocio');
   }
 
   function logout() {

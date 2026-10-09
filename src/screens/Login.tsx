@@ -138,7 +138,7 @@ export default function Login() {
         ) : (
           <form className="owner-login-card" onSubmit={handleOwnerLogin}>
             <div className="owner-login-heading">Administración del negocio</div>
-            <p>Ingresa con tu cuenta personal. No necesitas elegir una sucursal.</p>
+            <p>Usa tu correo y la clave de propietario configurada para el POS. No necesitas elegir una sucursal ni usar una clave de Supabase Auth.</p>
             <input className="login-input" type="email" autoComplete="username" placeholder="Correo de propietario" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} required />
             <input className="login-input" type="password" autoComplete="current-password" placeholder="Contraseña" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)} required />
             {error && <div className="login-err" role="alert">{error}</div>}
