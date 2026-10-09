@@ -2,13 +2,19 @@
 import { User, LocationUser } from '../types';
 import { supabase } from './supabase';
 
+const PWA_TOKEN_KEY = 'pwa_operator_token_v1';
+
+export function getOperatorToken() {
+  return localStorage.getItem(PWA_TOKEN_KEY);
+}
+
 interface AuthContextType {
   user: User | null;
   locationId: string | null;
   locationName: string | null;
   locationUsers: LocationUser[];
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (userId: string, password: string) => Promise<void>;
   logout: () => void;
   setLocation: (locationId: string, locationName: string) => Promise<void>;
   isAdmin: boolean;
@@ -44,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem('pwa_user');
     const savedLoc = localStorage.getItem('pwa_location_id');
     const savedLocName = localStorage.getItem('pwa_location_name');
+    const savedToken = localStorage.getItem(PWA_TOKEN_KEY);
 
-    if (savedUser && savedLoc) {
+    if (savedUser && savedLoc && savedToken) {
       try {
         setUser(JSON.parse(savedUser));
         setLocationId(savedLoc);
@@ -62,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadLocationUsers(locId: string) {
     try {
-      const { data, error } = await supabase.rpc('get_location_users', {
+    const { data, error } = await supabase.rpc('get_location_users', {
         p_location_id: locId,
       });
       if (error) throw error;
@@ -91,11 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadLocationUsers(locId);
   }
 
-  async function login(username: string, password: string) {
+  async function login(userId: string, password: string) {
     if (!locationId) throw new Error('Selecciona una sucursal primero');
 
-    const { data, error } = await supabase.rpc('login_pos_user', {
-      p_username: username,
+    localStorage.removeItem(PWA_TOKEN_KEY);
+    const { data, error } = await supabase.rpc('pos_login_session_by_user_id', {
+      p_user_id: userId,
       p_password: password,
       p_location_id: locationId,
     });
@@ -104,15 +112,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data || data.length === 0) throw new Error('Credenciales incorrectas');
 
     const u = data[0];
+    if (!u?.session_token || !u?.user_id) throw new Error('No se pudo crear la sesión cloud. Intenta nuevamente.');
     const newUser: User = {
       id: u.user_id,
-      username: u.username,
+      username: u.username || u.display_name,
       display_name: u.display_name,
       role: u.user_role as User['role'],
     };
 
     setUser(newUser);
     setLocationName(u.location_name);
+    localStorage.setItem(PWA_TOKEN_KEY, u.session_token);
     localStorage.setItem('pwa_user', JSON.stringify(newUser));
     localStorage.setItem('pwa_location_name', u.location_name);
   }
@@ -125,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('pwa_user');
     localStorage.removeItem('pwa_location_id');
     localStorage.removeItem('pwa_location_name');
+    localStorage.removeItem(PWA_TOKEN_KEY);
   }
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'OWNER';

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { getOperatorToken } from '../lib/auth';
 import { Product, Order, CartItem, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ export default function Waiter() {
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [orderOperationId, setOrderOperationId] = useState(() => crypto.randomUUID());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const knownReadyRef = useRef<Record<string, string>>({});
 
@@ -46,27 +48,20 @@ export default function Waiter() {
         if (tab === 'orders') loadActiveOrders();
       })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    const poll = window.setInterval(() => { if (tab === 'orders') void loadActiveOrders(); }, 4000);
+    return () => { void supabase.removeChannel(channel); window.clearInterval(poll); };
   }, [user, locationId, tab]);
 
   async function loadData() {
     if (!locationId) return;
     try {
-      const [prodsRes, catsRes] = await Promise.all([
-        supabase.from('products').select('*, categories!products_category_id_fkey(name)')
-          .eq('active', true).eq('location_id', locationId).order('sort_order'),
-        supabase.from('categories').select('*').eq('active', true).order('sort_order'),
-      ]);
-
-      if (prodsRes.error) throw prodsRes.error;
-      if (catsRes.error) throw catsRes.error;
-
-      const prods = (prodsRes.data || []).map((p: any) => ({
-        ...p,
-        category_name: p.categories?.name || '',
-      })) as Product[];
-      setProducts(prods);
-      setCategories(catsRes.data || []);
+      const { data, error } = await supabase.rpc('pos_get_menu', {
+        p_token: getOperatorToken(), p_location_id: locationId,
+      });
+      if (error) throw error;
+      const menu = data as { products?: any[]; categories?: any[] } | null;
+      setProducts((menu?.products || []).map((p) => ({ ...p, location_id: locationId })) as Product[]);
+      setCategories((menu?.categories || []) as Category[]);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
@@ -77,18 +72,13 @@ export default function Waiter() {
   async function loadActiveOrders() {
     if (!user || !locationId) return;
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('waiter_id', user.id)
-        .eq('location_id', locationId)
-        .in('status', ['RECEIVED', 'PREPARING', 'READY'])
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await supabase.rpc('pos_get_orders', {
+        p_token: getOperatorToken(), p_location_id: locationId, p_scope: 'MINE',
+      });
       if (error) throw error;
-      const orders = (data || []).map((order: any) => ({
+      const orders = ((data || []) as any[]).map((order: any) => ({
         ...order,
-        items: order.order_items || [],
+        items: order.items || [],
       })) as Order[];
       checkReadyOrders(orders);
       setActiveOrders(orders);
@@ -100,18 +90,13 @@ export default function Waiter() {
   async function loadHistory() {
     if (!user || !locationId) return;
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('waiter_id', user.id)
-        .eq('location_id', locationId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
+      const { data, error } = await supabase.rpc('pos_get_orders', {
+        p_token: getOperatorToken(), p_location_id: locationId, p_scope: 'MINE_HISTORY',
+      });
       if (error) throw error;
-      setHistoryOrders((data || []).map((order: any) => ({
+      setHistoryOrders(((data || []) as any[]).map((order: any) => ({
         ...order,
-        items: order.order_items || [],
+        items: order.items || [],
       })) as Order[]);
     } catch (err) {
       console.error('Error loading history:', err);
@@ -193,12 +178,13 @@ export default function Waiter() {
         notes: c.notes || null,
       }));
 
-      const { data, error } = await supabase.rpc('create_order', {
+      const { data, error } = await supabase.rpc('pos_create_order', {
+        p_token: getOperatorToken(),
+        p_location_id: locationId,
+        p_operation_id: orderOperationId,
         p_customer_name: customerName.trim() || 'Sin nombre',
-        p_waiter_id: user.id,
         p_notes: orderNotes.trim() || null,
         p_items: items,
-        p_location_id: locationId,
       });
 
       if (error) throw error;
@@ -206,6 +192,7 @@ export default function Waiter() {
       setCart([]);
       setCustomerName('');
       setOrderNotes('');
+      setOrderOperationId(crypto.randomUUID());
       setCartOpen(false);
       setSuccessMsg(`Tu pedido ha sido enviado a cocina.`);
       setSuccessOpen(true);
@@ -231,7 +218,7 @@ export default function Waiter() {
   async function cancelOrder(id: string) {
     if (!confirm('¿Anular esta orden?')) return;
     try {
-      const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
+      const { error } = await supabase.rpc('pos_cancel_order', { p_token: getOperatorToken(), p_order_id: id });
       if (error) throw error;
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       loadActiveOrders();

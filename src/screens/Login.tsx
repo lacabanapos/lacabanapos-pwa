@@ -28,7 +28,7 @@ export default function Login() {
     try {
       const { data, error } = await supabase
         .from('locations')
-        .select('*')
+        .select('id,name,business_id,active,created_at')
         .eq('active', true)
         .order('name');
       if (error) throw error;
@@ -61,7 +61,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      await login(selectedUser.username, password);
+      await login(selectedUser.user_id, password);
       if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
       navigate('/');
     } catch (err: any) {
@@ -142,9 +142,9 @@ export default function Login() {
             onClick={() => { setSelectedUserId(u.user_id); setError(''); }}
           >
             <div className="avatar-circle">
-              {u.display_name?.charAt(0).toUpperCase() || u.username.charAt(0).toUpperCase()}
+              {u.display_name?.charAt(0).toUpperCase() || '?'}
             </div>
-            <span className="avatar-name">{u.display_name || u.username}</span>
+            <span className="avatar-name">{u.display_name}</span>
           </button>
         ))}
       </div>

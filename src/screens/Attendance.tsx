@@ -33,6 +33,7 @@ export default function Attendance() {
   const [loginStatus, setLoginStatus] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [sessionToken, setSessionToken] = useState('');
   const [nextType, setNextType] = useState<'ENTRY' | 'EXIT'>('ENTRY');
   const [markStatus, setMarkStatus] = useState('');
   const [markLoading, setMarkLoading] = useState(false);
@@ -55,29 +56,27 @@ export default function Attendance() {
     setLoginLoading(true);
     setLoginStatus('Verificando...');
     try {
-      // Use login_pos_user RPC for POS-synced users
-      const { data, error } = await supabase.rpc('login_pos_user', {
+      if (!locationId) throw new Error('QR inválido: falta la sucursal.');
+      const { data, error } = await supabase.rpc('pos_login_session', {
         p_username: username.trim().toLowerCase(),
         p_password: password,
         p_location_id: locationId || null,
       });
       if (error) throw error;
       const loginRow = Array.isArray(data) ? data[0] : data;
-      if (!loginRow || loginRow.error) throw new Error(loginRow?.error || 'Credenciales incorrectas');
+      if (!loginRow?.session_token || !loginRow?.user_id) throw new Error('No se pudo crear la sesión cloud.');
 
+      setSessionToken(loginRow.session_token);
       setProfile({ id: loginRow.user_id, username: loginRow.username, role: loginRow.user_role });
       setWorkerName(loginRow.username);
 
       // Check last attendance record
-      const { data: lastRecord } = await supabase
-        .from('attendance_records')
-        .select('type')
-        .eq('user_id', loginRow.user_id)
-        .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: lastRecord, error: lastError } = await supabase.rpc('pos_get_last_attendance', {
+        p_token: loginRow.session_token, p_location_id: locationId, p_user_id: loginRow.user_id,
+      });
+      if (lastError) throw lastError;
 
-      setNextType(lastRecord?.type === 'ENTRY' ? 'EXIT' : 'ENTRY');
+      setNextType(lastRecord === 'ENTRY' ? 'EXIT' : 'ENTRY');
       setLoginStatus('');
     } catch (err: any) {
       setLoginStatus(err?.message || 'Credenciales incorrectas');
@@ -95,20 +94,24 @@ export default function Attendance() {
       const geo = await getGeo();
       const geoToUse = geo || geoData;
 
-      const clientEventId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+      const clientEventId = localStorage.getItem('attendance_pending_event_id') || crypto.randomUUID();
+      localStorage.setItem('attendance_pending_event_id', clientEventId);
 
-      const { data, error } = await supabase.rpc('mark_attendance', {
-        p_user_id: profile.id,
+      if (!locationId || !sessionToken) throw new Error('La sesión venció. Vuelve a iniciar sesión.');
+      const { data, error } = await supabase.rpc('pos_mark_attendance', {
+        p_token: sessionToken,
+        p_location_id: locationId,
         p_type: nextType,
         p_device_id: getDeviceId(),
         p_client_event_id: clientEventId,
-        p_code: code || null,
+        p_code: code,
         p_latitude: geoToUse?.lat || null,
         p_longitude: geoToUse?.lng || null,
         p_accuracy: geoToUse?.accuracy || null,
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      localStorage.removeItem('attendance_pending_event_id');
 
       setMarkStatus(`${nextType === 'ENTRY' ? 'Entrada' : 'Salida'} registrada a las ${new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`);
       setNextType(nextType === 'ENTRY' ? 'EXIT' : 'ENTRY');

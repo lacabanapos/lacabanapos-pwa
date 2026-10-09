@@ -23,9 +23,7 @@ export interface LocationMembership {
 
 export interface LocationUser {
   user_id: string;
-  username: string;
   display_name: string;
-  user_role: string;
 }
 
 export interface Product {

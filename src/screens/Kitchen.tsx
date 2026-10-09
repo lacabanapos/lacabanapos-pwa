@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../lib/auth';
+import { getOperatorToken, useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -39,38 +39,27 @@ export default function Kitchen() {
     const channel = supabase.channel(`kitchen-${locationId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `location_id=eq.${locationId}` }, loadOrders)
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    const poll = window.setInterval(() => void loadOrders(), 4000);
+    return () => { void supabase.removeChannel(channel); window.clearInterval(poll); };
   }, [user, locationId]);
 
   async function loadOrders() {
     if (!locationId) return;
     try {
-      const [ordersResult, usersResult] = await Promise.all([
-        supabase.from('orders')
-          .select('*, order_items(*)')
-          .eq('location_id', locationId)
-          .in('status', ['RECEIVED', 'PREPARING', 'READY'])
-          .order('created_at', { ascending: true }),
-        supabase.rpc('get_location_users', { p_location_id: locationId }),
-      ]);
-
-      const { data, error } = ordersResult;
-
+      const { data, error } = await supabase.rpc('pos_get_orders', {
+        p_token: getOperatorToken(), p_location_id: locationId, p_scope: 'KITCHEN',
+      });
       if (error) throw error;
-      if (usersResult.error) throw usersResult.error;
-      const waiterNames = new Map((usersResult.data || []).map((entry: any) => [entry.user_id, entry.display_name || entry.username]));
 
       const newOrders = (data || []).map((o: any) => ({
         ...o,
-        // PostgREST returns the nested relation as order_items; the UI
-        // renders the normalized items property.
-        items: (o.order_items || []).map((item: any) => ({
+        items: (o.items || []).map((item: any) => ({
           ...item,
           unit_price_cents: item.unit_price_cents ?? Math.round(Number(item.unit_price || 0) * 100),
         })),
         // New orders persist the sender name.  The relation is only a
         // compatibility fallback for orders created before that fix.
-        waiter_name: o.waiter_name || waiterNames.get(o.waiter_id) || 'Mesero no identificado',
+        waiter_name: o.waiter_name || 'Mesero no identificado',
       })) as Order[];
 
       checkNewOrders(newOrders);
@@ -118,8 +107,8 @@ export default function Kitchen() {
 
   async function changeStatus(id: string, status: string) {
     try {
-      const { error } = await supabase.rpc('update_order_status', {
-        p_order_id: id,
+      const { error } = await supabase.rpc('pos_update_order_status', {
+        p_token: getOperatorToken(), p_order_id: id,
         p_status: status,
       });
       if (error) throw error;
@@ -133,7 +122,7 @@ export default function Kitchen() {
   async function cancelOrder(id: string) {
     if (!confirm('Anular orden #' + id.slice(0, 8) + '?')) return;
     try {
-      const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
+      const { error } = await supabase.rpc('pos_cancel_order', { p_token: getOperatorToken(), p_order_id: id });
       if (error) throw error;
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       loadOrders();
