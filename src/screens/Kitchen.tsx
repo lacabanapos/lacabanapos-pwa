@@ -163,9 +163,15 @@ export default function Kitchen() {
         <div className="topbar-actions">
           <span className="order-count-badge">{orders.length}</span>
           <div className="status-dot" />
-          <button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Salir</button>
+          {user?.role === 'OWNER' ? (
+            <button className="btn-logout" onClick={() => navigate('/admin/sucursales')}>Sucursales</button>
+          ) : (
+            <button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Salir</button>
+          )}
         </div>
       </div>
+
+      {user?.role === 'OWNER' && <div className="owner-readonly-banner">Vista de propietario · solo lectura</div>}
 
       <div className="filter-bar">
         {['all', 'RECEIVED', 'PREPARING', 'READY'].map((f) => (
@@ -216,7 +222,7 @@ export default function Kitchen() {
                       </div>
                     ))}
                   </div>
-                  <div className="order-actions">
+                  {user?.role !== 'OWNER' && <div className="order-actions">
                     {order.status === 'RECEIVED' && (
                       <button className="action-btn receive" onClick={() => changeStatus(order.id, 'PREPARING')}>
                         RECIBIDO
@@ -230,7 +236,7 @@ export default function Kitchen() {
                     <button className="action-btn cancel" onClick={() => cancelOrder(order.id)}>
                       ANULAR
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             </div>

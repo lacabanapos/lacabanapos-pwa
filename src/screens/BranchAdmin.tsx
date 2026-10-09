@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Check, Clock3, Copy, Plus, RefreshCw, Store, X } from 'lucide-react';
 import { useAuth, getOperatorToken } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 type Branch = { location_id: string; location_name: string; active: boolean; created_at: string };
 type TerminalRequest = { request_id: string; device_name: string; location_id: string; location_name: string; requested_at: string };
 
 export default function BranchAdmin() {
-  const { user, locationId, locationName, logout } = useAuth();
+  const { user, locationId, locationName, logout, enterBranch } = useAuth();
+  const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [requests, setRequests] = useState<TerminalRequest[]>([]);
   const [name, setName] = useState('');
@@ -78,6 +80,15 @@ export default function BranchAdmin() {
     finally { setBusy(null); }
   }
 
+  async function openBranch(branch: Branch) {
+    setBusy(`open:${branch.location_id}`); setError(''); setNotice('');
+    try {
+      await enterBranch(branch.location_id);
+      navigate('/cocina');
+    } catch (e: any) { setError(e?.message || 'No se pudo abrir la sucursal.'); }
+    finally { setBusy(null); }
+  }
+
   async function decide(request: TerminalRequest, approve: boolean) {
     if (!locationId) return;
     setBusy(request.request_id); setError(''); setNotice('');
@@ -105,7 +116,7 @@ export default function BranchAdmin() {
 
   return <main className="branch-admin">
     <header className="branch-admin-head">
-      <div><div className="branch-kicker">ADMINISTRACIÓN DEL NEGOCIO</div><h1>Sucursales y equipos</h1><p>Conectado desde {locationName || 'sucursal actual'}. Las sucursales y autorizaciones se guardan en Supabase.</p></div>
+      <div><div className="branch-kicker">ADMINISTRACIÓN DEL NEGOCIO</div><h1>Sucursales y equipos</h1><p>Propietario global · conectado a {locationName || 'tu negocio'}. Puedes abrir cada sucursal en modo de consulta.</p></div>
       <button className="branch-logout" onClick={() => { logout(); window.location.assign('/login'); }}>Salir</button>
     </header>
 
@@ -123,8 +134,8 @@ export default function BranchAdmin() {
     </section>
 
     <section className="branch-section">
-      <div className="branch-section-title"><span className="branch-icon"><Store size={19}/></span><div><h2>Sucursales existentes</h2><p>La ubicación actual se conserva; aquí puedes crear otras y generar un código temporal de vinculación.</p></div></div>
-      {loading ? <div className="branch-empty">Cargando…</div> : <div className="branch-list">{branches.map(branch => <article className="branch-row" key={branch.location_id}><div><b>{branch.location_name}</b><span>{branch.location_id === locationId ? 'Sucursal desde la que administras' : branch.active ? 'Activa' : 'Inactiva'}</span></div><button disabled={!!busy} onClick={() => void makeCode(branch)}>{busy === `code:${branch.location_id}` ? 'Generando…' : 'Código para nuevo POS'}</button></article>)}</div>}
+      <div className="branch-section-title"><span className="branch-icon"><Store size={19}/></span><div><h2>Sucursales existentes</h2><p>Ábrelas para revisar los pedidos en modo de solo lectura, o genera un código para vincular un POS.</p></div></div>
+      {loading ? <div className="branch-empty">Cargando…</div> : <div className="branch-list">{branches.map(branch => <article className="branch-row" key={branch.location_id}><div><b>{branch.location_name}</b><span>{branch.active ? 'Activa' : 'Inactiva'}</span></div><div className="branch-row-actions"><button className="branch-inspect" disabled={!!busy || !branch.active} onClick={() => void openBranch(branch)}>{busy === `open:${branch.location_id}` ? 'Abriendo…' : 'Entrar y revisar'}</button><button disabled={!!busy || !branch.active} onClick={() => void makeCode(branch)}>{busy === `code:${branch.location_id}` ? 'Generando…' : 'Código para POS'}</button></div></article>)}</div>}
     </section>
 
     {pairing && <section className="branch-pairing-code"><div><b>Código de vinculación · {branches.find(b => b.location_id === pairing.locationId)?.location_name || 'sucursal'}</b><span>Uso único · vence {new Date(pairing.expiresAt).toLocaleString()}</span></div><code>{pairing.code}</code><button onClick={() => void copyCode()}><Copy size={17}/> Copiar código</button></section>}

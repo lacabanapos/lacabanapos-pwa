@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   login: (userId: string, password: string) => Promise<void>;
   loginSuperadmin: (email: string, password: string) => Promise<void>;
+  enterBranch: (targetLocationId: string) => Promise<void>;
   logout: () => void;
   setLocation: (locationId: string, locationName: string) => Promise<void>;
   isAdmin: boolean;
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   loginSuperadmin: async () => {},
+  enterBranch: async () => {},
   logout: () => {},
   setLocation: async () => {},
   isAdmin: false,
@@ -156,6 +158,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pwa_location_name', session.business_name || session.location_name || 'Administración del negocio');
   }
 
+  async function enterBranch(targetLocationId: string) {
+    if (user?.role !== 'OWNER' || !locationId) throw new Error('Inicia sesión como propietario para abrir una sucursal.');
+    const { data, error } = await supabase.rpc('pos_superadmin_enter_location', {
+      p_token: getOperatorToken(),
+      p_current_location_id: locationId,
+      p_target_location_id: targetLocationId,
+    });
+    if (error) throw error;
+    const session = Array.isArray(data) ? data[0] : data;
+    if (!session?.session_token || !session?.location_id) throw new Error('No se pudo abrir la sucursal.');
+
+    setLocationId(session.location_id);
+    setLocationName(session.location_name);
+    localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
+    localStorage.setItem('pwa_location_id', session.location_id);
+    localStorage.setItem('pwa_location_name', session.location_name);
+  }
+
   function logout() {
     setUser(null);
     setLocationId(null);
@@ -174,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, locationId, locationName, locationUsers,
-      loading, login, loginSuperadmin, logout, setLocation, isAdmin, isCocina,
+      loading, login, loginSuperadmin, enterBranch, logout, setLocation, isAdmin, isCocina,
     }}>
       {children}
     </AuthContext.Provider>
