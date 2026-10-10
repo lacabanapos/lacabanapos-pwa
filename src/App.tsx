@@ -19,7 +19,8 @@ function RoleRedirect() {
   if (loading) return <div className="loading"><div className="spinner" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   const role = (user.role || '').toUpperCase();
-  if (role === 'ADMIN' || role === 'OWNER') return <Navigate to="/admin/sucursales" replace />;
+  if (role === 'OWNER') return <Navigate to="/admin/sucursales" replace />;
+  if (role === 'ADMIN') return <Navigate to="/cocina" replace />;
   if (role === 'COCINA' || role === 'ASADOR') return <Navigate to="/cocina" replace />;
   return <Navigate to="/mesero" replace />;
 }
@@ -41,3 +42,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

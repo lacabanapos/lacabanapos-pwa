@@ -1,8 +1,9 @@
-﻿import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, LocationUser } from '../types';
 import { supabase } from './supabase';
 
 const PWA_TOKEN_KEY = 'pwa_operator_token_v1';
+const OWNER_SESSION_KEY = 'pwa_owner_session_v1';
 
 export function getOperatorToken() {
   return localStorage.getItem(PWA_TOKEN_KEY);
@@ -13,10 +14,12 @@ interface AuthContextType {
   locationId: string | null;
   locationName: string | null;
   locationUsers: LocationUser[];
+  ownerInspection: boolean;
   loading: boolean;
   login: (userId: string, password: string) => Promise<void>;
   loginSuperadmin: (email: string, password: string) => Promise<void>;
   enterBranch: (targetLocationId: string) => Promise<void>;
+  returnToBranches: () => void;
   logout: () => void;
   setLocation: (locationId: string, locationName: string) => Promise<void>;
   isAdmin: boolean;
@@ -28,10 +31,12 @@ const AuthContext = createContext<AuthContextType>({
   locationId: null,
   locationName: null,
   locationUsers: [],
+  ownerInspection: false,
   loading: true,
   login: async () => {},
   loginSuperadmin: async () => {},
   enterBranch: async () => {},
+  returnToBranches: () => {},
   logout: () => {},
   setLocation: async () => {},
   isAdmin: false,
@@ -47,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [locationUsers, setLocationUsers] = useState<LocationUser[]>([]);
+  const [ownerInspection, setOwnerInspection] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (savedUser && savedLoc && savedToken) {
       try {
-        setUser(JSON.parse(savedUser));
+        const restoredUser = JSON.parse(savedUser) as User;
+        setUser(restoredUser);
+        setOwnerInspection(!!localStorage.getItem(OWNER_SESSION_KEY));
         setLocationId(savedLoc);
         setLocationName(savedLocName);
         loadLocationUsers(savedLoc);
@@ -133,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loginSuperadmin(email: string, password: string) {
     localStorage.removeItem(PWA_TOKEN_KEY);
+    localStorage.removeItem(OWNER_SESSION_KEY);
     const { data, error } = await supabase.rpc('pos_superadmin_login', {
       p_login: email.trim().toLowerCase(),
       p_password: password,
@@ -150,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: 'OWNER',
     };
     setUser(owner);
+    setOwnerInspection(false);
     setLocationId(session.location_id);
     setLocationName(session.business_name || session.location_name || 'Administración del negocio');
     localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
@@ -169,6 +179,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const session = Array.isArray(data) ? data[0] : data;
     if (!session?.session_token || !session?.location_id) throw new Error('No se pudo abrir la sucursal.');
 
+    localStorage.setItem(OWNER_SESSION_KEY, JSON.stringify({
+      user, locationId, locationName, token: getOperatorToken(),
+    }));
+    const branchUser: User = { ...user, role: 'ADMIN' };
+    setUser(branchUser);
+    setOwnerInspection(true);
+    localStorage.setItem('pwa_user', JSON.stringify(branchUser));
+
     setLocationId(session.location_id);
     setLocationName(session.location_name);
     localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
@@ -176,8 +194,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pwa_location_name', session.location_name);
   }
 
+  function returnToBranches() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(OWNER_SESSION_KEY) || 'null');
+      if (!saved?.user || !saved?.locationId || !saved?.token) throw new Error('No existe una sesión de propietario para restaurar.');
+      setUser(saved.user);
+      setOwnerInspection(false);
+      setLocationId(saved.locationId);
+      setLocationName(saved.locationName || 'Administración del negocio');
+      localStorage.setItem('pwa_user', JSON.stringify(saved.user));
+      localStorage.setItem('pwa_location_id', saved.locationId);
+      localStorage.setItem('pwa_location_name', saved.locationName || 'Administración del negocio');
+      localStorage.setItem(PWA_TOKEN_KEY, saved.token);
+      localStorage.removeItem(OWNER_SESSION_KEY);
+    } catch (error) {
+      console.error('Could not restore owner session:', error);
+      logout();
+      window.location.assign('/login');
+    }
+  }
+
   function logout() {
     setUser(null);
+    setOwnerInspection(false);
     setLocationId(null);
     setLocationName(null);
     setLocationUsers([]);
@@ -185,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('pwa_location_id');
     localStorage.removeItem('pwa_location_name');
     localStorage.removeItem(PWA_TOKEN_KEY);
+    localStorage.removeItem(OWNER_SESSION_KEY);
     void supabase.auth.signOut();
   }
 
@@ -193,10 +233,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, locationId, locationName, locationUsers,
-      loading, login, loginSuperadmin, enterBranch, logout, setLocation, isAdmin, isCocina,
+      user, locationId, locationName, locationUsers, ownerInspection,
+      loading, login, loginSuperadmin, enterBranch, returnToBranches, logout, setLocation, isAdmin, isCocina,
     }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
