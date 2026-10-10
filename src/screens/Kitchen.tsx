@@ -21,13 +21,15 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function Kitchen() {
-  const { user, locationId, locationName, logout } = useAuth();
+  const { user, locationId, locationName, logout, ownerInspection, returnToBranches } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const knownOrdersRef = useRef<Set<string>>(new Set());
+  const orderBaselineInitializedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -42,6 +44,21 @@ export default function Kitchen() {
     const poll = window.setInterval(() => void loadOrders(), 4000);
     return () => { void supabase.removeChannel(channel); window.clearInterval(poll); };
   }, [user, locationId]);
+
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+        if (audioCtxRef.current.state === 'suspended') void audioCtxRef.current.resume();
+      } catch {}
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   async function loadOrders() {
     if (!locationId) return;
@@ -74,13 +91,14 @@ export default function Kitchen() {
   function checkNewOrders(newOrders: Order[]) {
     for (const order of newOrders) {
       if (order.status === 'RECEIVED' && !knownOrdersRef.current.has(order.id)) {
-        if (knownOrdersRef.current.size > 0) {
+        if (orderBaselineInitializedRef.current) {
           playNotification();
           if (navigator.vibrate) navigator.vibrate([120, 70, 120]);
         }
       }
     }
     knownOrdersRef.current = new Set(newOrders.map((o) => o.id));
+    orderBaselineInitializedRef.current = true;
   }
 
   function playNotification() {
@@ -106,6 +124,8 @@ export default function Kitchen() {
   }
 
   async function changeStatus(id: string, status: string) {
+    if (updatingOrderId) return;
+    setUpdatingOrderId(id);
     try {
       const { error } = await supabase.rpc('pos_update_order_status', {
         p_token: getOperatorToken(), p_order_id: id,
@@ -116,6 +136,8 @@ export default function Kitchen() {
       loadOrders();
     } catch (err: any) {
       alert('Error: ' + err.message);
+    } finally {
+      setUpdatingOrderId(null);
     }
   }
 
@@ -163,15 +185,15 @@ export default function Kitchen() {
         <div className="topbar-actions">
           <span className="order-count-badge">{orders.length}</span>
           <div className="status-dot" />
-          {user?.role === 'OWNER' ? (
-            <button className="btn-logout" onClick={() => navigate('/admin/sucursales')}>Sucursales</button>
+          {ownerInspection ? (
+            <button className="btn-logout" onClick={returnToBranches}>Volver a sucursales</button>
           ) : (
             <button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Salir</button>
           )}
         </div>
       </div>
 
-      {user?.role === 'OWNER' && <div className="owner-readonly-banner">Vista de propietario · solo lectura</div>}
+      {ownerInspection && <div className="owner-readonly-banner">Administrando {locationName} con permisos de administrador de esta sucursal.</div>}
 
       <div className="filter-bar">
         {['all', 'RECEIVED', 'PREPARING', 'READY'].map((f) => (
@@ -222,21 +244,21 @@ export default function Kitchen() {
                       </div>
                     ))}
                   </div>
-                  {user?.role !== 'OWNER' && <div className="order-actions">
+                  <div className="order-actions">
                     {order.status === 'RECEIVED' && (
-                      <button className="action-btn receive" onClick={() => changeStatus(order.id, 'PREPARING')}>
-                        RECIBIDO
+                      <button className="action-btn receive" disabled={Boolean(updatingOrderId)} onClick={() => changeStatus(order.id, 'PREPARING')}>
+                        {updatingOrderId === order.id ? 'ACTUALIZANDO…' : 'INICIAR PREPARACIÓN'}
                       </button>
                     )}
                     {order.status === 'PREPARING' && (
-                      <button className="action-btn dispatch" onClick={() => changeStatus(order.id, 'READY')}>
-                        DESPACHADO
+                      <button className="action-btn dispatch" disabled={Boolean(updatingOrderId)} onClick={() => changeStatus(order.id, 'READY')}>
+                        {updatingOrderId === order.id ? 'ACTUALIZANDO…' : 'LISTO · AVISAR MESERO'}
                       </button>
                     )}
-                    <button className="action-btn cancel" onClick={() => cancelOrder(order.id)}>
+                    <button className="action-btn cancel" disabled={Boolean(updatingOrderId)} onClick={() => cancelOrder(order.id)}>
                       ANULAR
                     </button>
-                  </div>}
+                  </div>
                 </div>
               </div>
             </div>

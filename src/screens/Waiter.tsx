@@ -32,9 +32,11 @@ export default function Waiter() {
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [servingOrderId, setServingOrderId] = useState<string | null>(null);
   const [orderOperationId, setOrderOperationId] = useState(() => crypto.randomUUID());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const knownReadyRef = useRef<Record<string, string>>({});
+  const readyBaselineInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!user || !locationId) {
@@ -42,15 +44,30 @@ export default function Waiter() {
       return;
     }
     loadData();
-    // Realtime subscription for orders tab
+    void loadActiveOrders();
+    // Keep the waiter updated even while the menu tab is open. A ready signal
+    // must not depend on the user staying on the orders screen.
     const channel = supabase.channel(`waiter-orders-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `waiter_id=eq.${user.id}` }, () => {
-        if (tab === 'orders') loadActiveOrders();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `waiter_id=eq.${user.id}` }, () => { void loadActiveOrders(); })
       .subscribe();
-    const poll = window.setInterval(() => { if (tab === 'orders') void loadActiveOrders(); }, 4000);
+    const poll = window.setInterval(() => { void loadActiveOrders(); }, 4000);
     return () => { void supabase.removeChannel(channel); window.clearInterval(poll); };
-  }, [user, locationId, tab]);
+  }, [user, locationId]);
+
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+        if (audioCtxRef.current.state === 'suspended') void audioCtxRef.current.resume();
+      } catch {}
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   async function loadData() {
     if (!locationId) return;
@@ -106,7 +123,7 @@ export default function Waiter() {
   function checkReadyOrders(orders: Order[]) {
     for (const order of orders) {
       if (order.status === 'READY' && knownReadyRef.current[order.id] !== 'READY') {
-        if (Object.keys(knownReadyRef.current).length > 0) {
+        if (readyBaselineInitializedRef.current) {
           playReadySound();
           if (navigator.vibrate) navigator.vibrate([90, 50, 90]);
         }
@@ -115,6 +132,7 @@ export default function Waiter() {
     const map: Record<string, string> = {};
     orders.forEach((o) => { map[o.id] = o.status; });
     knownReadyRef.current = map;
+    readyBaselineInitializedRef.current = true;
   }
 
   function playReadySound() {
@@ -227,9 +245,32 @@ export default function Waiter() {
     }
   }
 
+  async function markOrderServed(id: string) {
+    if (servingOrderId) return;
+    setServingOrderId(id);
+    try {
+      const { error } = await supabase.rpc('pos_update_order_status', {
+        p_token: getOperatorToken(), p_order_id: id, p_status: 'SERVED',
+      });
+      if (error) throw error;
+      if (navigator.vibrate) navigator.vibrate([45, 35, 45]);
+      await loadActiveOrders();
+      await loadHistory();
+    } catch (err: any) {
+      alert('No se pudo marcar como servido: ' + (err.message || 'revise la conexión e intente otra vez.'));
+    } finally {
+      setServingOrderId(null);
+    }
+  }
+
   function formatDate(ts: string) {
     if (!ts) return '';
     return new Date(ts).toLocaleDateString('es-EC') + ' ' + new Date(ts).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function elapsed(ts: string) {
+    const minutes = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 60000));
+    return minutes < 1 ? 'ahora' : minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
   }
 
   const statuses = ['RECEIVED', 'PREPARING', 'READY', 'SERVED'];
@@ -266,7 +307,7 @@ export default function Waiter() {
 
       <div className="nav-tabs">
         <button className={`nav-tab ${tab === 'menu' ? 'active' : ''}`} onClick={() => setTab('menu')}>Menu</button>
-        <button className={`nav-tab ${tab === 'orders' ? 'active' : ''}`} onClick={() => { setTab('orders'); loadActiveOrders(); }}>Ordenes</button>
+        <button className={`nav-tab ${tab === 'orders' ? 'active' : ''}`} onClick={() => { setTab('orders'); loadActiveOrders(); }}>Ordenes{activeOrders.filter((o) => o.status === 'READY').length > 0 && <span className="ready-tab-count">{activeOrders.filter((o) => o.status === 'READY').length}</span>}</button>
         <button className={`nav-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => { setTab('history'); loadHistory(); }}>Historial</button>
       </div>
 
@@ -332,12 +373,12 @@ export default function Waiter() {
                 const currentIdx = statuses.indexOf(o.status);
                 return (
                   <div key={o.id} className={`order-card card-${o.status}`}>
-                    <div className="order-head">
+                    <div className={`order-head waiter-order-head ${o.status === 'READY' ? 'is-ready' : ''}`}>
                       <span className="order-id">#{o.id.slice(0, 8)}</span>
-                      <span className="order-customer">{o.customer_name}</span>
+                      <span className="order-customer">{o.customer_name || 'Pedido sin nombre'}</span>
                       <span className={`order-status ${o.status}`}>{STATUS_LABELS[o.status]}</span>
                     </div>
-                    <div className="status-timeline">
+                    <div className={`status-timeline ${o.status === 'READY' ? 'is-ready' : ''}`} aria-label={`Estado: ${STATUS_LABELS[o.status]}`}>
                       {statuses.map((s, j) => (
                         <div key={s} style={{ display: 'contents' }}>
                           {j > 0 && <div className={`timeline-line ${j <= currentIdx ? 'done' : ''}`} />}
@@ -347,8 +388,13 @@ export default function Waiter() {
                         </div>
                       ))}
                     </div>
+                    <div className="waiter-status-labels" aria-hidden="true">
+                      {statuses.map((status) => <span key={status} className={status === o.status ? 'current' : ''}>{STATUS_LABELS[status]}</span>)}
+                    </div>
+                    {o.status === 'READY' && <div className="order-ready-callout"><span className="ready-pulse" />Listo en cocina · ya puedes servirlo</div>}
                     <div className="order-meta">
-                      <span>{o.waiter_name}</span>
+                      <span>{o.waiter_name || user?.username || 'Mesero'}</span>
+                      <span>{elapsed(o.created_at)}</span>
                     </div>
                     <div className="order-items-list">
                       {o.items?.map((it) => (
@@ -359,6 +405,11 @@ export default function Waiter() {
                         </span>
                       ))}
                     </div>
+                    {o.status === 'READY' && (
+                      <button className="waiter-serve-button" disabled={servingOrderId === o.id} onClick={() => void markOrderServed(o.id)}>
+                        {servingOrderId === o.id ? 'ACTUALIZANDO…' : 'MARCAR SERVIDO'}
+                      </button>
+                    )}
                     {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
                       <button onClick={() => cancelOrder(o.id)} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.08)', color: '#ef4444', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         ANULAR ORDEN
