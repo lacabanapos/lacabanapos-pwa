@@ -15,19 +15,22 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(true);
+  const [locationsError, setLocationsError] = useState('');
   const [ownerLogin, setOwnerLogin] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
 
   useEffect(() => {
-    if (user && locationId) {
-      navigate('/');
+    if (user) {
+      navigate(user.role === 'OWNER' && !locationId ? '/admin/sucursales' : '/');
       return;
     }
     loadLocations();
   }, [user, locationId]);
 
   async function loadLocations() {
+    setLoadingLocations(true);
+    setLocationsError('');
     try {
       const { data, error } = await supabase
         .from('locations')
@@ -38,6 +41,7 @@ export default function Login() {
       setLocations(data || []);
     } catch (err) {
       console.error('Error loading locations:', err);
+      setLocationsError('No se pudo consultar la lista de sucursales. Revisa tu conexión y vuelve a intentar.');
     } finally {
       setLoadingLocations(false);
     }
@@ -91,8 +95,10 @@ export default function Login() {
   // Location selection step
   if (step === 'location') {
     return (
-      <div className="login-screen">
-        <div className="login-logo">
+    <div className="login-screen login-screen-locations">
+      <main className="login-locations-shell">
+        <header className="login-brand-row">
+          <div className="login-logo">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
             <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
@@ -100,20 +106,32 @@ export default function Login() {
             <line x1="10" y1="1" x2="10" y2="4" />
             <line x1="14" y1="1" x2="14" y2="4" />
           </svg>
-        </div>
-        <div className="login-title">La Cabaña</div>
-        <div className="login-sub">Selecciona tu terminal</div>
+          </div>
+          <div className="login-brand-copy"><div className="login-title">La Cabaña</div><div className="login-sub">Punto de venta · acceso seguro</div></div>
+          <span className="login-brand-tag">PUNTO DE VENTA</span>
+        </header>
+
+        <section className="login-location-intro">
+          <span className="login-overline">ACCESO AL EQUIPO</span>
+          <h1>¿Dónde vas a trabajar?</h1>
+          <p>Elige una sucursal para entrar al punto de venta. El propietario puede administrar el negocio sin seleccionar una.</p>
+        </section>
 
         {loadingLocations ? (
-          <div className="loading" style={{ marginTop: 24 }}>
+          <div className="loading login-locations-loading">
             <div className="spinner" />
           </div>
+        ) : locationsError ? (
+          <section className="login-no-locations login-location-error" role="alert">
+            <div className="login-empty-mark">!</div><div><b>No se cargaron las sucursales</b><p>{locationsError}</p><button type="button" onClick={() => void loadLocations()}>Volver a consultar</button></div>
+          </section>
         ) : locations.length === 0 ? (
-          <div className="empty" style={{ marginTop: 24, color: 'var(--text2)' }}>
-            No hay terminales registradas
-          </div>
+          <section className="login-no-locations">
+            <div className="login-empty-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 9h.01M15 9h.01"/></svg></div>
+            <div><b>Aún no hay sucursales</b><p>El dueño o SuperAdmin debe crear la primera sucursal desde Administración del negocio. No hay que crear una sucursal inicial.</p></div>
+          </section>
         ) : (
-          <div className="location-grid">
+          <div className="location-grid login-location-grid">
             {locations.map((loc) => (
               <button
                 key={loc.id}
@@ -126,27 +144,31 @@ export default function Login() {
                     <circle cx="12" cy="10" r="3" />
                   </svg>
                 </div>
-                <span className="location-name">{loc.name}</span>
+                <span className="location-card-copy"><span className="location-name">{loc.name}</span><small>Entrar a esta sucursal</small></span>
+                <span className="location-card-arrow">→</span>
               </button>
             ))}
           </div>
         )}
         {!ownerLogin ? (
           <button className="owner-access-link" onClick={() => { setOwnerLogin(true); setError(''); }}>
-            Acceso de propietario <span>·</span> Crear y administrar sucursales
+            <span className="owner-access-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01"/></svg></span>
+            <span><b>Administrar el negocio</b><small>Dueño o SuperAdmin · crear y gestionar sucursales</small></span>
+            <span className="location-card-arrow">→</span>
           </button>
         ) : (
           <form className="owner-login-card" onSubmit={handleOwnerLogin}>
-            <div className="owner-login-heading">Administración del negocio</div>
-            <p>Usa tu correo y la clave de propietario configurada para el POS. No necesitas elegir una sucursal ni usar una clave de Supabase Auth.</p>
+            <div className="owner-login-heading">Acceso de administración</div>
+            <p>Entra directamente al negocio. No necesitas una sucursal creada para administrar sucursales.</p>
             <input className="login-input" type="email" autoComplete="username" placeholder="Correo de propietario" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} required />
             <input className="login-input" type="password" autoComplete="current-password" placeholder="Contraseña" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)} required />
             {error && <div className="login-err" role="alert">{error}</div>}
-            <button className="login-btn" type="submit" disabled={loading}>{loading ? 'Verificando…' : 'ENTRAR A SUCURSALES'}</button>
-            <button className="owner-back-link" type="button" onClick={() => { setOwnerLogin(false); setOwnerPassword(''); setError(''); }}>Volver a seleccionar terminal</button>
+            <button className="login-btn" type="submit" disabled={loading}>{loading ? 'Verificando…' : 'ENTRAR A ADMINISTRACIÓN'}</button>
+            <button className="owner-back-link" type="button" onClick={() => { setOwnerLogin(false); setOwnerPassword(''); setError(''); }}>Volver al acceso por sucursal</button>
           </form>
         )}
-        <div className="version">v2.0.0 PWA</div>
+        <footer className="login-location-footer"><span>LA CABAÑA</span><span>·</span><span>v2.0.0 PWA</span></footer>
+      </main>
       </div>
     );
   }

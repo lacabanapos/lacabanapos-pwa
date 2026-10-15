@@ -9,7 +9,7 @@ type TerminalRequest = { request_id: string; device_name: string; location_id: s
 type BranchUser = { user_id: string; username: string; display_name: string; user_role: string; active: boolean };
 
 export default function BranchAdmin() {
-  const { user, locationId, locationName, logout, enterBranch, ownerInspection } = useAuth();
+  const { user, locationName, logout, enterBranch, ownerInspection } = useAuth();
   const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [requests, setRequests] = useState<TerminalRequest[]>([]);
@@ -27,18 +27,17 @@ export default function BranchAdmin() {
   const [pairing, setPairing] = useState<{ locationId: string; code: string; expiresAt: string } | null>(null);
 
   const load = useCallback(async () => {
-    if (!locationId) return;
     setError('');
     const token = getOperatorToken();
     const [branchResult, requestResult] = await Promise.all([
-      supabase.rpc('pos_admin_list_business_locations', { p_token: token, p_location_id: locationId }),
-      supabase.rpc('pos_admin_list_terminal_requests', { p_token: token, p_location_id: locationId }),
+      supabase.rpc('pos_owner_list_business_locations_global', { p_token: token }),
+      supabase.rpc('pos_owner_list_terminal_requests_global', { p_token: token }),
     ]);
     if (branchResult.error) throw branchResult.error;
     if (requestResult.error) throw requestResult.error;
     setBranches((branchResult.data || []) as Branch[]);
     setRequests((requestResult.data || []) as TerminalRequest[]);
-  }, [locationId]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -52,18 +51,18 @@ export default function BranchAdmin() {
   }, [load]);
 
   async function createBranch() {
-    if (!locationId || name.trim().length < 2) return;
+    if (name.trim().length < 2) return;
     setBusy('create'); setError(''); setNotice('');
     try {
-      const { data, error: createError } = await supabase.rpc('pos_admin_create_location_with_users', {
-        p_token: getOperatorToken(), p_location_id: locationId, p_name: name.trim(),
+      const { data, error: createError } = await supabase.rpc('pos_owner_create_location_global', {
+        p_token: getOperatorToken(), p_name: name.trim(),
         p_admin_password: adminPin, p_cashier_password: cashierPin,
       });
       if (createError) throw createError;
       const branch = Array.isArray(data) ? data[0] : data;
       if (!branch?.location_id) throw new Error('No se confirmó la creación de la sucursal.');
-      const { data: codeData, error: codeError } = await supabase.rpc('pos_admin_create_location_pairing_code', {
-        p_token: getOperatorToken(), p_location_id: locationId, p_target_location_id: branch.location_id,
+      const { data: codeData, error: codeError } = await supabase.rpc('pos_owner_create_pairing_code_global', {
+        p_token: getOperatorToken(), p_target_location_id: branch.location_id,
       });
       if (codeError) throw codeError;
       const codeRow = Array.isArray(codeData) ? codeData[0] : codeData;
@@ -75,11 +74,10 @@ export default function BranchAdmin() {
   }
 
   async function makeCode(branch: Branch) {
-    if (!locationId) return;
     setBusy(`code:${branch.location_id}`); setError(''); setNotice('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('pos_admin_create_location_pairing_code', {
-        p_token: getOperatorToken(), p_location_id: locationId, p_target_location_id: branch.location_id,
+      const { data, error: rpcError } = await supabase.rpc('pos_owner_create_pairing_code_global', {
+        p_token: getOperatorToken(), p_target_location_id: branch.location_id,
       });
       if (rpcError) throw rpcError;
       const row = Array.isArray(data) ? data[0] : data;
@@ -98,11 +96,10 @@ export default function BranchAdmin() {
   }
 
   async function decide(request: TerminalRequest, approve: boolean) {
-    if (!locationId) return;
     setBusy(request.request_id); setError(''); setNotice('');
     try {
-      const { error: rpcError } = await supabase.rpc('pos_admin_decide_terminal_request', {
-        p_token: getOperatorToken(), p_location_id: locationId,
+      const { error: rpcError } = await supabase.rpc('pos_owner_decide_terminal_request_global', {
+        p_token: getOperatorToken(),
         p_request_id: request.request_id, p_approve: approve,
       });
       if (rpcError) throw rpcError;
@@ -118,16 +115,15 @@ export default function BranchAdmin() {
     catch { setNotice('Copia manualmente el código mostrado; vence en 24 horas y solo se usa una vez.'); }
   }
 
-  if (!user || !locationId || user.role !== 'OWNER' || ownerInspection) {
+  if (!user || user.role !== 'OWNER' || ownerInspection) {
     return <div className="loading"><div className="spinner" /></div>;
   }
 
   async function loadBranchUsers(branch: Branch) {
-    if (!locationId) return;
     setBusy(`users:${branch.location_id}`); setError('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('pos_owner_list_location_users', {
-        p_token: getOperatorToken(), p_current_location_id: locationId, p_target_location_id: branch.location_id,
+      const { data, error: rpcError } = await supabase.rpc('pos_owner_list_location_users_global', {
+        p_token: getOperatorToken(), p_target_location_id: branch.location_id,
       });
       if (rpcError) throw rpcError;
       setBranchUsers(current => ({ ...current, [branch.location_id]: (data || []) as BranchUser[] }));
@@ -137,11 +133,10 @@ export default function BranchAdmin() {
   }
 
   async function prepareBranchUsers(branch: Branch) {
-    if (!locationId) return;
     setBusy(`prepare:${branch.location_id}`); setError(''); setNotice('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('pos_owner_bootstrap_location_users', {
-        p_token: getOperatorToken(), p_current_location_id: locationId, p_target_location_id: branch.location_id,
+      const { data, error: rpcError } = await supabase.rpc('pos_owner_bootstrap_location_users_global', {
+        p_token: getOperatorToken(), p_target_location_id: branch.location_id,
         p_admin_password: adminPin, p_cashier_password: cashierPin,
       });
       if (rpcError) throw rpcError;
@@ -153,11 +148,11 @@ export default function BranchAdmin() {
   }
 
   async function resetBranchUser(branch: Branch, account: BranchUser) {
-    if (!locationId || resetPin.length < 4) return;
+    if (resetPin.length < 4) return;
     setBusy(`reset:${account.user_id}`); setError(''); setNotice('');
     try {
-      const { error: rpcError } = await supabase.rpc('pos_owner_save_location_user', {
-        p_token: getOperatorToken(), p_current_location_id: locationId, p_target_location_id: branch.location_id,
+      const { error: rpcError } = await supabase.rpc('pos_owner_save_location_user_global', {
+        p_token: getOperatorToken(), p_target_location_id: branch.location_id,
         p_user_id: account.user_id, p_username: account.username, p_display_name: account.display_name,
         p_role: account.user_role, p_password: resetPin,
       });
@@ -170,7 +165,7 @@ export default function BranchAdmin() {
 
   return <main className="branch-admin">
     <header className="branch-admin-head">
-      <div><div className="branch-kicker">ADMINISTRACIÓN DEL NEGOCIO</div><h1>Sucursales y equipos</h1><p>Propietario global · conectado a {locationName || 'tu negocio'}. Puedes abrir cada sucursal en modo de consulta.</p></div>
+      <div className="branch-admin-title"><div className="branch-kicker">{locationName || 'LA CABAÑA'} · ADMINISTRACIÓN</div><h1>Sucursales y equipos</h1><p>Crea ubicaciones, autoriza los POS y administra los accesos desde un solo lugar.</p><div className="branch-head-meta"><span><Store size={15}/>{branches.length} {branches.length === 1 ? 'sucursal' : 'sucursales'}</span><span><Clock3 size={15}/>{requests.length} solicitudes pendientes</span></div></div>
       <button className="branch-logout" onClick={() => { logout(); window.location.assign('/login'); }}>Salir</button>
     </header>
 
@@ -189,7 +184,7 @@ export default function BranchAdmin() {
 
     <section className="branch-section">
       <div className="branch-section-title"><span className="branch-icon"><Store size={19}/></span><div><h2>Sucursales existentes</h2><p>Administra los accesos, revisa la sucursal o genera un código para autorizar un POS.</p></div></div>
-      {loading ? <div className="branch-empty">Cargando…</div> : <div className="branch-list">{branches.map(branch => <article className="branch-row branch-row-expanded" key={branch.location_id}><div><b>{branch.location_name}</b><span>{branch.active ? 'Activa' : 'Inactiva'}</span></div><div className="branch-row-actions"><button className="branch-inspect" disabled={!!busy || !branch.active} onClick={() => void openBranch(branch)}>{busy === `open:${branch.location_id}` ? 'Abriendo…' : 'Entrar y revisar'}</button><button disabled={!!busy || !branch.active} onClick={() => void makeCode(branch)}>{busy === `code:${branch.location_id}` ? 'Generando…' : 'Código para POS'}</button><button className="branch-access-toggle" disabled={!!busy || !branch.active} onClick={() => expandedBranch === branch.location_id ? setExpandedBranch(null) : void loadBranchUsers(branch)}><Users size={16}/> Accesos</button></div>
+      {loading ? <div className="branch-empty">Cargando sucursales…</div> : branches.length === 0 ? <div className="branch-empty branch-no-branches"><span className="branch-icon"><Store size={21}/></span><div><b>Aún no hay sucursales</b><p>Crea aquí la primera. No necesitas una sucursal inicial para administrar el negocio.</p></div></div> : <div className="branch-list">{branches.map(branch => <article className="branch-row branch-row-expanded" key={branch.location_id}><div><b>{branch.location_name}</b><span>{branch.active ? 'Activa' : 'Inactiva'}</span></div><div className="branch-row-actions"><button className="branch-inspect" disabled={!!busy || !branch.active} onClick={() => void openBranch(branch)}>{busy === `open:${branch.location_id}` ? 'Abriendo…' : 'Entrar y revisar'}</button><button disabled={!!busy || !branch.active} onClick={() => void makeCode(branch)}>{busy === `code:${branch.location_id}` ? 'Generando…' : 'Código para POS'}</button><button className="branch-access-toggle" disabled={!!busy || !branch.active} onClick={() => expandedBranch === branch.location_id ? setExpandedBranch(null) : void loadBranchUsers(branch)}><Users size={16}/> Accesos</button></div>
         {expandedBranch === branch.location_id && <div className="branch-users-panel"><div className="branch-users-head"><div><b>Usuarios de {branch.location_name}</b><span>Las claves existentes no se muestran. Solo dueño o administrador puede restablecerlas.</span></div><button onClick={() => void prepareBranchUsers(branch)} disabled={!!busy}><KeyRound size={15}/>{busy === `prepare:${branch.location_id}` ? 'Preparando…' : 'Crear admin/caja si faltan'}</button></div>
           {(branchUsers[branch.location_id] || []).length === 0 ? <p className="branch-users-empty">No hay usuarios configurados todavía.</p> : <div className="branch-users-list">{branchUsers[branch.location_id].map(account => <div className="branch-user-row" key={account.user_id}><div><b>{account.username}</b><span>{account.display_name} · {account.user_role} · {account.active ? 'Activo' : 'Inactivo'}</span></div>{resetUser === account.user_id ? <div className="branch-reset-form"><input value={resetPin} type="password" inputMode="numeric" minLength={4} placeholder="Nueva clave (4+ caracteres)" onChange={e => setResetPin(e.target.value)} /><button disabled={!!busy || resetPin.length < 4} onClick={() => void resetBranchUser(branch, account)}>{busy === `reset:${account.user_id}` ? 'Guardando…' : 'Guardar'}</button><button className="branch-cancel-reset" onClick={() => { setResetUser(null); setResetPin(''); }}>Cancelar</button></div> : <button className="branch-reset-button" disabled={!!busy || !account.active} onClick={() => { setResetUser(account.user_id); setResetPin(''); }}>Restablecer clave</button>}</div>)}</div>}
         </div>}

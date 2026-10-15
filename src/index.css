@@ -1323,3 +1323,122 @@ html, body, #root {
   .order-ready-callout{margin-left:10px;margin-right:10px}
   .kitchen-app .action-btn.dispatch{min-height:58px}
 }
+
+/* First screen: keep global administration distinct from branch terminals. */
+.login-screen.login-screen-locations{
+  position:fixed;inset:0;z-index:500;display:block;overflow-x:hidden;overflow-y:auto;
+  padding:clamp(20px,4vw,56px) clamp(16px,5vw,72px) calc(28px + env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 50% -18%,rgba(197,157,43,.16),transparent 46%),#0b0b0d;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;
+}
+.login-locations-shell{width:min(100%,1120px);min-height:calc(100dvh - 84px);margin:0 auto;display:flex;flex-direction:column}
+.login-brand-row{display:flex;align-items:center;gap:16px;padding-bottom:clamp(34px,7vh,74px);border-bottom:1px solid rgba(255,255,255,.08)}
+.login-brand-row .login-logo{width:56px;height:56px;flex:none;margin:0;border-radius:17px;box-shadow:none;animation:none}
+.login-brand-row .login-logo svg{width:28px;height:28px}
+.login-brand-copy .login-title{font-size:24px}
+.login-brand-copy .login-sub{margin:3px 0 0;font-size:12px}
+.login-cloud-status{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#a9b4ac;font-size:12px;font-weight:700}
+.login-cloud-status i{width:8px;height:8px;border-radius:50%;background:#34c38f;box-shadow:0 0 14px rgba(52,195,143,.5)}
+.login-location-intro{max-width:780px;padding:clamp(30px,6vh,62px) 0 20px}
+.login-overline{color:var(--gold);font-size:11px;letter-spacing:.17em;font-weight:900}
+.login-location-intro h1{margin:10px 0 9px;color:#f4f0e6;font-size:clamp(30px,5vw,48px);line-height:1.06;letter-spacing:-.045em}
+.login-location-intro p{max-width:640px;margin:0;color:#a5a3a0;font-size:clamp(14px,1.8vw,17px);line-height:1.65}
+.login-screen .login-location-grid{max-width:none;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:14px;padding:12px 0 24px}
+.login-screen .location-card{position:relative;min-height:116px;display:grid;grid-template-columns:54px 1fr 22px;align-items:center;gap:15px;padding:20px;text-align:left;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:linear-gradient(145deg,#1b1b1e,#131315);transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.login-screen .location-card:hover,.login-screen .location-card:focus-visible{transform:translateY(-2px);border-color:rgba(214,175,55,.55);background:linear-gradient(145deg,#24221b,#171716);outline:2px solid rgba(214,175,55,.16);outline-offset:2px}
+.login-screen .location-icon{width:52px;height:52px;border-radius:15px;background:rgba(212,175,55,.14)}
+.login-screen .location-icon svg{width:26px;height:26px;stroke:var(--gold)}
+.location-card-copy{display:grid;gap:6px;min-width:0}
+.login-screen .location-name{font-size:16px;text-align:left;overflow-wrap:anywhere}
+.location-card-copy small{color:#85858a;font-size:12px}
+.location-card-arrow{font-size:23px;color:var(--gold);line-height:1}
+.login-no-locations{display:flex;align-items:center;gap:18px;max-width:760px;margin:6px 0 24px;padding:22px;border:1px dashed rgba(212,175,55,.35);border-radius:16px;background:rgba(212,175,55,.045)}
+.login-empty-mark{width:54px;height:54px;flex:none;display:grid;place-items:center;border-radius:15px;background:rgba(212,175,55,.12);color:var(--gold)}
+.login-empty-mark svg{width:28px;height:28px}
+.login-no-locations b{font-size:17px;color:#f0eee7}
+.login-no-locations p{margin:6px 0 0;color:#a6a4a0;font-size:14px;line-height:1.55}
+.login-screen .owner-access-link{width:100%;max-width:760px;min-height:92px;display:grid;grid-template-columns:54px 1fr 22px;align-items:center;gap:16px;padding:18px 20px;text-align:left;border:1px solid rgba(212,175,55,.43);border-radius:16px;background:linear-gradient(110deg,rgba(212,175,55,.13),rgba(26,25,22,.8) 60%);color:#f6e5a0;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.login-screen .owner-access-link:hover,.login-screen .owner-access-link:focus-visible{background:linear-gradient(110deg,rgba(212,175,55,.2),rgba(31,29,23,.95) 60%);border-color:var(--gold);transform:translateY(-1px);outline:none}
+.owner-access-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:15px;background:rgba(212,175,55,.15);color:var(--gold)}
+.owner-access-icon svg{width:27px;height:27px}
+.login-screen .owner-access-link>span:nth-child(2){display:grid;gap:6px}
+.login-screen .owner-access-link b{font-size:16px}
+.login-screen .owner-access-link small{color:#aaa69a;font-size:12px;line-height:1.4}
+.login-screen .owner-login-card{max-width:760px;padding:clamp(18px,3vw,28px);border-color:rgba(212,175,55,.3);background:linear-gradient(145deg,#19191b,#111113);border-radius:16px}
+.login-screen .owner-login-heading{font-size:21px}
+.login-screen .owner-login-card p{font-size:14px}
+.login-screen .owner-login-card .login-input{min-height:54px;font-size:16px}
+.login-screen .owner-login-card .login-btn{min-height:54px}
+.login-screen .owner-back-link{min-height:46px}
+.login-locations-loading{min-height:110px;display:grid;place-items:center}
+.login-location-footer{margin-top:auto;padding-top:30px;color:#69696e;font-size:10px;letter-spacing:.08em;display:flex;justify-content:center;gap:8px}
+@media(max-width:620px){
+  .login-screen.login-screen-locations{padding:16px 16px calc(22px + env(safe-area-inset-bottom))}
+  .login-locations-shell{min-height:calc(100dvh - 38px)}
+  .login-brand-row{gap:12px;padding-bottom:28px}
+  .login-brand-row .login-logo{width:46px;height:46px;border-radius:14px}
+  .login-brand-row .login-logo svg{width:24px;height:24px}
+  .login-brand-copy .login-title{font-size:21px}
+  .login-brand-copy .login-sub{font-size:10px}
+  .login-cloud-status{font-size:0;gap:0}
+  .login-location-intro{padding:34px 0 14px}
+  .login-location-intro h1{font-size:32px}
+  .login-location-intro p{font-size:14px;line-height:1.55}
+  .login-screen .login-location-grid{grid-template-columns:1fr;gap:10px;padding:8px 0 18px}
+  .login-screen .location-card{min-height:86px;grid-template-columns:48px 1fr 20px;padding:14px;border-radius:13px}
+  .login-screen .location-icon{width:46px;height:46px;border-radius:13px}
+  .login-screen .owner-access-link{min-height:82px;grid-template-columns:46px 1fr 18px;padding:14px;gap:12px}
+  .owner-access-icon{width:44px;height:44px}
+  .login-screen .owner-access-link b{font-size:14px}
+  .login-screen .owner-access-link small{font-size:11px}
+  .login-no-locations{align-items:flex-start;padding:16px;gap:12px}
+  .login-empty-mark{width:44px;height:44px}
+  .login-no-locations p{font-size:13px}
+  .login-screen .owner-login-card{padding:18px}
+}
+.login-brand-tag{margin-left:auto;color:#8f8c84;font-size:10px;letter-spacing:.14em;font-weight:800}
+.login-location-error .login-empty-mark{font-size:24px;font-weight:900;color:#ff9c82;background:rgba(239,91,67,.12)}
+.login-location-error button{min-height:42px;margin-top:12px;padding:0 14px;border:1px solid rgba(212,175,55,.35);border-radius:9px;background:#211f19;color:#f1d778;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+@media(max-width:620px){.login-brand-tag{font-size:8px;letter-spacing:.08em}}
+
+/* Global branch administration scales up on desktop without losing touch
+   targets or natural vertical scrolling on phones. */
+.branch-admin{max-width:1180px;padding:clamp(22px,4vw,48px) clamp(16px,3vw,34px) calc(60px + env(safe-area-inset-bottom))}
+.branch-admin-head{align-items:center;padding:8px 0 30px;margin-bottom:26px}
+.branch-admin-title{flex:1;min-width:0}
+.branch-admin-head h1{font-size:clamp(30px,4vw,46px);letter-spacing:-.035em}
+.branch-admin-head p{max-width:660px;font-size:15px}
+.branch-head-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.branch-head-meta span{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 11px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.025);color:var(--text2);font-size:12px;font-weight:700}
+.branch-head-meta svg{color:var(--gold)}
+.branch-logout{min-width:92px;min-height:46px;cursor:pointer}
+.branch-create,.branch-section{padding:clamp(19px,2.5vw,28px);margin:20px 0;border-radius:17px;background:linear-gradient(145deg,rgba(27,27,29,.96),rgba(17,17,19,.98))}
+.branch-section-title{gap:15px;margin-bottom:20px}
+.branch-icon{width:48px;height:48px;border-radius:14px}
+.branch-section-title h2{font-size:20px;letter-spacing:-.02em}
+.branch-section-title p{font-size:14px}
+.branch-create-row input{min-height:52px}
+.branch-create-fields>label{font-size:12px}
+.branch-create-row button,.branch-row button,.branch-pairing-code button{min-height:48px}
+.branch-empty{padding:28px;font-size:14px}
+.branch-no-branches{display:flex;align-items:center;gap:15px;text-align:left;border-style:solid;border-color:rgba(212,175,55,.22);background:rgba(212,175,55,.035)}
+.branch-no-branches .branch-icon{flex:none;margin:0}
+.branch-no-branches b{color:var(--text);font-size:15px}
+.branch-no-branches p{margin:5px 0 0;color:var(--text2);line-height:1.5}
+.branch-row,.branch-request{min-height:76px;padding:16px;border-radius:13px}
+.branch-row>div:first-child b,.branch-request>div:first-child b{font-size:15px}
+@media(max-width:620px){
+  .branch-admin{padding:18px 14px calc(36px + env(safe-area-inset-bottom))}
+  .branch-admin-head{align-items:flex-start;padding-bottom:20px;margin-bottom:16px}
+  .branch-admin-head h1{font-size:30px;line-height:1.08}
+  .branch-admin-head p{font-size:13px}
+  .branch-head-meta{gap:7px;margin-top:13px}
+  .branch-head-meta span{font-size:10px;min-height:31px;padding:0 9px}
+  .branch-logout{min-width:60px;min-height:42px;padding:0 10px}
+  .branch-create,.branch-section{padding:16px;margin:14px 0;border-radius:14px}
+  .branch-icon{width:42px;height:42px;border-radius:12px}
+  .branch-section-title{align-items:flex-start;gap:11px}
+  .branch-section-title h2{font-size:17px}
+  .branch-section-title p{font-size:12px}
+  .branch-no-branches{align-items:flex-start}
+}

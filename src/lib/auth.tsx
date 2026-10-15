@@ -62,14 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedLocName = localStorage.getItem('pwa_location_name');
     const savedToken = localStorage.getItem(PWA_TOKEN_KEY);
 
-    if (savedUser && savedLoc && savedToken) {
+    if (savedUser && savedToken) {
       try {
         const restoredUser = JSON.parse(savedUser) as User;
+        if (!savedLoc && restoredUser.role !== 'OWNER') throw new Error('Missing branch context');
         setUser(restoredUser);
         setOwnerInspection(!!localStorage.getItem(OWNER_SESSION_KEY));
-        setLocationId(savedLoc);
+        setLocationId(savedLoc || null);
         setLocationName(savedLocName);
-        loadLocationUsers(savedLoc);
+        if (savedLoc) void loadLocationUsers(savedLoc);
       } catch {
         localStorage.removeItem('pwa_user');
         localStorage.removeItem('pwa_location_id');
@@ -148,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     const session = Array.isArray(data) ? data[0] : data;
-    if (!session?.session_token || !session?.location_id || !session?.user_id) {
+    if (!session?.session_token || !session?.user_id) {
       throw new Error('No se pudo iniciar la sesión global.');
     }
 
@@ -160,20 +161,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setUser(owner);
     setOwnerInspection(false);
-    setLocationId(session.location_id);
-    setLocationName(session.business_name || session.location_name || 'Administración del negocio');
+    setLocationId(session.location_id || null);
+    setLocationName(session.business_name || 'Administración del negocio');
     localStorage.setItem(PWA_TOKEN_KEY, session.session_token);
     localStorage.setItem('pwa_user', JSON.stringify(owner));
-    localStorage.setItem('pwa_location_id', session.location_id);
-    localStorage.setItem('pwa_location_name', session.business_name || session.location_name || 'Administración del negocio');
+    if (session.location_id) localStorage.setItem('pwa_location_id', session.location_id);
+    else localStorage.removeItem('pwa_location_id');
+    localStorage.setItem('pwa_location_name', session.business_name || 'Administración del negocio');
   }
 
   async function enterBranch(targetLocationId: string) {
-    if (user?.role !== 'OWNER' || !locationId) throw new Error('Inicia sesión como propietario para abrir una sucursal.');
-    const { data, error } = await supabase.rpc('pos_superadmin_enter_location', {
-      p_token: getOperatorToken(),
-      p_current_location_id: locationId,
-      p_target_location_id: targetLocationId,
+    if (user?.role !== 'OWNER') throw new Error('Inicia sesión como propietario para abrir una sucursal.');
+    const { data, error } = await supabase.rpc('pos_owner_enter_location_global', {
+      p_token: getOperatorToken(), p_target_location_id: targetLocationId,
     });
     if (error) throw error;
     const session = Array.isArray(data) ? data[0] : data;
@@ -197,13 +197,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function returnToBranches() {
     try {
       const saved = JSON.parse(localStorage.getItem(OWNER_SESSION_KEY) || 'null');
-      if (!saved?.user || !saved?.locationId || !saved?.token) throw new Error('No existe una sesión de propietario para restaurar.');
+      if (!saved?.user || !saved?.token) throw new Error('No existe una sesión de propietario para restaurar.');
       setUser(saved.user);
       setOwnerInspection(false);
-      setLocationId(saved.locationId);
+      setLocationId(saved.locationId || null);
       setLocationName(saved.locationName || 'Administración del negocio');
       localStorage.setItem('pwa_user', JSON.stringify(saved.user));
-      localStorage.setItem('pwa_location_id', saved.locationId);
+      if (saved.locationId) localStorage.setItem('pwa_location_id', saved.locationId);
+      else localStorage.removeItem('pwa_location_id');
       localStorage.setItem('pwa_location_name', saved.locationName || 'Administración del negocio');
       localStorage.setItem(PWA_TOKEN_KEY, saved.token);
       localStorage.removeItem(OWNER_SESSION_KEY);
