@@ -163,7 +163,7 @@ export default function Attendance() {
           <label>Usuario<input type="text" placeholder="Tu usuario" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
           <label>Contraseña<input type="password" placeholder="••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
           {urlCode && (
-            <label>Código de acceso<input type="text" placeholder="Código numérico" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} style={{ fontFamily: 'monospace', letterSpacing: 2 }} /></label>
+          <label>Código de acceso<input type="text" placeholder="Código de acceso" value={code} onChange={(e) => setCode(e.target.value)} maxLength={64} style={{ fontFamily: 'monospace', letterSpacing: 2 }} /></label>
           )}
           <button onClick={handleLogin} disabled={loginLoading}>{loginLoading ? 'Verificando...' : 'Ingresar'}</button>
           <div className={`status ${loginStatus.includes('incorrecta') || loginStatus.includes('Error') ? 'error' : ''}`}>{loginStatus}</div>

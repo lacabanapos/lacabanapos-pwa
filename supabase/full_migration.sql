@@ -170,21 +170,6 @@ CREATE TABLE IF NOT EXISTS table_layout (
   active BOOLEAN DEFAULT true
 );
 
-CREATE OR REPLACE FUNCTION cleanup_old_data()
-RETURNS void AS 
-BEGIN
-  DELETE FROM order_items WHERE order_id IN (
-    SELECT id FROM orders WHERE created_at < NOW() - INTERVAL '3 months'
-  );
-  DELETE FROM orders WHERE created_at < NOW() - INTERVAL '3 months';
-  DELETE FROM ticket_items WHERE ticket_id IN (
-    SELECT id FROM tickets WHERE created_at < NOW() - INTERVAL '3 months'
-  );
-  DELETE FROM tickets WHERE created_at < NOW() - INTERVAL '3 months';
-  DELETE FROM attendance_records WHERE recorded_at < NOW() - INTERVAL '3 months';
-END;
- LANGUAGE plpgsql;
-
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_waiter ON orders(waiter_name);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
