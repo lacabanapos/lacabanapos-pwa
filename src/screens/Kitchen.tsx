@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED: 'Recibido',
   PREPARING: 'Preparando',
-  READY: 'Listo',
+  READY: 'Despachado',
   SERVED: 'Servido',
   CANCELLED: 'Anulado',
 };
@@ -252,7 +252,7 @@ export default function Kitchen() {
                     )}
                     {order.status === 'PREPARING' && (
                       <button className="action-btn dispatch" disabled={Boolean(updatingOrderId)} onClick={() => changeStatus(order.id, 'READY')}>
-                        {updatingOrderId === order.id ? 'ACTUALIZANDO…' : 'LISTO · AVISAR MESERO'}
+                        {updatingOrderId === order.id ? 'ACTUALIZANDO…' : 'DESPACHADO · AVISAR MESERO'}
                       </button>
                     )}
                     <button className="action-btn cancel" disabled={Boolean(updatingOrderId)} onClick={() => cancelOrder(order.id)}>

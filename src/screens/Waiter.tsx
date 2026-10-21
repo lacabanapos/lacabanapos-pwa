@@ -34,6 +34,8 @@ export default function Waiter() {
   const [sending, setSending] = useState(false);
   const [servingOrderId, setServingOrderId] = useState<string | null>(null);
   const [orderOperationId, setOrderOperationId] = useState(() => crypto.randomUUID());
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [additionOperationId, setAdditionOperationId] = useState(() => crypto.randomUUID());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const knownReadyRef = useRef<Record<string, string>>({});
   const readyBaselineInitializedRef = useRef(false);
@@ -187,6 +189,25 @@ export default function Waiter() {
     if (!cart.length || !user || !locationId) return;
     setSending(true);
     try {
+      if (editingOrderId) {
+        const { error } = await supabase.rpc('pos_add_items_to_order', {
+          p_token: getOperatorToken(),
+          p_order_id: editingOrderId,
+          p_operation_id: additionOperationId,
+          p_items: cart.map((item) => ({ product_id: item.id, quantity: item.qty, notes: item.notes || '' })),
+        });
+        if (error) throw error;
+        setCart([]);
+        setEditingOrderId(null);
+        setAdditionOperationId(crypto.randomUUID());
+        setCartOpen(false);
+        setTab('orders');
+        await loadActiveOrders();
+        setSuccessMsg('Los productos se agregaron al pedido y se enviaron a cocina.');
+        setSuccessOpen(true);
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        return;
+      }
       const items = cart.map((c) => ({
         product_id: c.id,
         product_name: c.name,
@@ -220,6 +241,16 @@ export default function Waiter() {
     } finally {
       setSending(false);
     }
+  }
+
+  function startAddingToOrder(order: Order) {
+    if (!['RECEIVED', 'PREPARING'].includes(order.status)) return;
+    setCart([]);
+    setOrderNotes('');
+    setEditingOrderId(order.id);
+    setAdditionOperationId(crypto.randomUUID());
+    setTab('menu');
+    setCartOpen(false);
   }
 
   function filteredProducts() {
@@ -313,10 +344,16 @@ export default function Waiter() {
 
       {tab === 'menu' && (
         <div className="tab-content active">
-          <div className="cliente-bar">
+          {editingOrderId && (
+            <div style={{ margin: '10px 14px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span>Agregando productos al pedido <strong>#{editingOrderId.slice(0, 8)}</strong></span>
+              <button onClick={() => { setEditingOrderId(null); setCart([]); setTab('orders'); }} style={{ padding: '8px 12px', borderRadius: 8 }}>Cancelar</button>
+            </div>
+          )}
+          {!editingOrderId && <div className="cliente-bar">
             <label>Cliente:</label>
             <input type="text" placeholder="Ej: Mesa 4, Carolina..." value={customerName} onChange={(e) => setCustomerName(e.target.value)} autoComplete="off" />
-          </div>
+          </div>}
           <div className="search-bar">
             <input type="text" placeholder="Buscar producto..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
           </div>
@@ -411,6 +448,11 @@ export default function Waiter() {
                       </button>
                     )}
                     {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
+                      <button onClick={() => startAddingToOrder(o)} style={{ marginTop: 8, width: '100%', minHeight: 44, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', color: 'var(--gold)', fontWeight: 800, cursor: 'pointer' }}>
+                        AGREGAR PRODUCTOS
+                      </button>
+                    )}
+                    {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
                       <button onClick={() => cancelOrder(o.id)} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.08)', color: '#ef4444', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         ANULAR ORDEN
                       </button>
@@ -462,7 +504,7 @@ export default function Waiter() {
         <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }}>
           <div className="sheet">
             <div className="sheet-head">
-              <h2>Tu Pedido</h2>
+              <h2>{editingOrderId ? 'Agregar al pedido' : 'Tu Pedido'}</h2>
               <button className="sheet-close" onClick={() => setCartOpen(false)}>X</button>
             </div>
             <div className="sheet-body">
@@ -499,11 +541,11 @@ export default function Waiter() {
             <div className="sheet-footer">
               <div className="sheet-total"><span>TOTAL</span><span className="amount">${(cartTotal / 100).toFixed(2)}</span></div>
               <button className="btn-send" onClick={sendOrder} disabled={sending}>
-                {sending ? 'Enviando...' : 'ENVIAR ORDEN'}
+                {sending ? 'Enviando...' : editingOrderId ? 'AGREGAR A COCINA' : 'ENVIAR ORDEN'}
               </button>
             </div>
-            <button className="btn-discard" onClick={() => { if (confirm('Descartar todo?')) { setCart([]); setCartOpen(false); } }}>
-              DESCARTAR PEDIDO
+            <button className="btn-discard" onClick={() => { if (confirm('¿Descartar los productos seleccionados?')) { setCart([]); setCartOpen(false); } }}>
+              DESCARTAR {editingOrderId ? 'ADICIONALES' : 'PEDIDO'}
             </button>
           </div>
         </div>
