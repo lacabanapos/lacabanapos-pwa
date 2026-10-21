@@ -346,7 +346,7 @@ export default function Waiter() {
         <div className="tab-content active">
           {editingOrderId && (
             <div style={{ margin: '10px 14px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span>Agregando productos al pedido <strong>#{editingOrderId.slice(0, 8)}</strong></span>
+              <span>Agregando al pedido <strong>#{editingOrderId.slice(0, 8)}</strong><br/><small>Disponible antes del despacho; se enviará a cocina.</small></span>
               <button onClick={() => { setEditingOrderId(null); setCart([]); setTab('orders'); }} style={{ padding: '8px 12px', borderRadius: 8 }}>Cancelar</button>
             </div>
           )}
@@ -539,7 +539,7 @@ export default function Waiter() {
               <textarea placeholder="Nota general del pedido (opcional)..." value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} />
             </div>
             <div className="sheet-footer">
-              <div className="sheet-total"><span>TOTAL</span><span className="amount">${(cartTotal / 100).toFixed(2)}</span></div>
+              <div className="sheet-total"><span>{editingOrderId ? 'ADICIONALES' : 'TOTAL'}</span><span className="amount">${(cartTotal / 100).toFixed(2)}</span></div>
               <button className="btn-send" onClick={sendOrder} disabled={sending}>
                 {sending ? 'Enviando...' : editingOrderId ? 'AGREGAR A COCINA' : 'ENVIAR ORDEN'}
               </button>
