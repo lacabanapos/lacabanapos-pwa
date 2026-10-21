@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED: 'Recibido',
   PREPARING: 'Preparando',
-  READY: 'Listo',
+  READY: 'Despachado',
   SERVED: 'Servido',
   CANCELLED: 'Anulada',
 };
@@ -428,7 +428,7 @@ export default function Waiter() {
                     <div className="waiter-status-labels" aria-hidden="true">
                       {statuses.map((status) => <span key={status} className={status === o.status ? 'current' : ''}>{STATUS_LABELS[status]}</span>)}
                     </div>
-                    {o.status === 'READY' && <div className="order-ready-callout"><span className="ready-pulse" />Listo en cocina · ya puedes servirlo</div>}
+                    {o.status === 'READY' && <div className="order-ready-callout"><span className="ready-pulse" />Despachado por cocina · ya puedes servirlo</div>}
                     <div className="order-meta">
                       <span>{o.waiter_name || user?.username || 'Mesero'}</span>
                       <span>{elapsed(o.created_at)}</span>
