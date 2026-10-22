@@ -68,6 +68,7 @@ export interface OrderItem {
   unit_price_cents?: number;
   unit_price?: number;
   notes?: string;
+  prep_status?: 'RECEIVED' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 }
 
 export interface Ticket {

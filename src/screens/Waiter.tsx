@@ -244,7 +244,7 @@ export default function Waiter() {
   }
 
   function startAddingToOrder(order: Order) {
-    if (!['RECEIVED', 'PREPARING'].includes(order.status)) return;
+    if (order.status === 'CANCELLED') return;
     setCart([]);
     setOrderNotes('');
     setEditingOrderId(order.id);
@@ -346,7 +346,7 @@ export default function Waiter() {
         <div className="tab-content active">
           {editingOrderId && (
             <div style={{ margin: '10px 14px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span>Agregando al pedido <strong>#{editingOrderId.slice(0, 8)}</strong><br/><small>Disponible antes del despacho; se enviará a cocina.</small></span>
+              <span>Agregando al pedido <strong>#{editingOrderId.slice(0, 8)}</strong><br/><small>Disponible mientras siga pendiente de cobro. Los productos nuevos vuelven a cocina; los ya preparados conservan su estado.</small></span>
               <button onClick={() => { setEditingOrderId(null); setCart([]); setTab('orders'); }} style={{ padding: '8px 12px', borderRadius: 8 }}>Cancelar</button>
             </div>
           )}
@@ -438,6 +438,7 @@ export default function Waiter() {
                         <span key={it.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '2px 0', padding: '2px 4px', background: 'var(--surface)', borderRadius: 6 }}>
                           <span style={{ fontWeight: 800, color: '#000', background: 'linear-gradient(135deg,var(--gold),var(--gold-bright))', padding: '1px 7px', borderRadius: 5, fontSize: 11 }}>{it.quantity}x</span>
                           {it.product_name}
+                          {it.prep_status && <small style={{ color: it.prep_status === 'RECEIVED' ? 'var(--gold)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 5, padding: '1px 5px' }}>{it.prep_status === 'SERVED' ? 'Servido' : it.prep_status === 'READY' ? 'Despachado' : it.prep_status === 'PREPARING' ? 'Preparando' : it.prep_status === 'RECEIVED' ? 'Pendiente cocina' : 'Anulado'}</small>}
                           {it.notes && <i style={{ color: 'var(--gold)', fontSize: 11 }}>({it.notes})</i>}
                         </span>
                       ))}
@@ -447,11 +448,7 @@ export default function Waiter() {
                         {servingOrderId === o.id ? 'ACTUALIZANDO…' : 'MARCAR SERVIDO'}
                       </button>
                     )}
-                    {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
-                      <button onClick={() => startAddingToOrder(o)} style={{ marginTop: 8, width: '100%', minHeight: 44, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', color: 'var(--gold)', fontWeight: 800, cursor: 'pointer' }}>
-                        AGREGAR PRODUCTOS
-                      </button>
-                    )}
+                    {o.status !== 'CANCELLED' && <button onClick={() => startAddingToOrder(o)} style={{ marginTop: 8, width: '100%', minHeight: 44, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gold)', background: 'rgba(212,175,55,.12)', color: 'var(--gold)', fontWeight: 800, cursor: 'pointer' }}>AGREGAR PRODUCTOS</button>}
                     {(o.status === 'RECEIVED' || o.status === 'PREPARING') && (
                       <button onClick={() => cancelOrder(o.id)} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.08)', color: '#ef4444', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         ANULAR ORDEN
