@@ -540,6 +540,15 @@ html, body, #root {
 
 .cliente-bar input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
 .cliente-bar input::placeholder { color: var(--text3); }
+.cliente-bar small { display: block; margin: 6px 0 0 82px; color: var(--text3); font-size: .78rem; }
+.cliente-bar small[role="alert"] { color: #f87171; }
+.order-identifier-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; color: var(--text); font-weight: 700; }
+.order-identifier-field b { color: #d2ae32; }
+.order-identifier-field input { width: 100%; min-height: 46px; box-sizing: border-box; padding: 10px 12px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font: inherit; }
+.order-identifier-field input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.order-identifier-field input[aria-invalid="true"] { border-color: #f87171; }
+.order-identifier-field small { color: var(--text3); font-size: .78rem; font-weight: 500; }
+.order-identifier-field small[role="alert"] { color: #f87171; }
 
 /* ═══ SEARCH ═══ */
 .search-bar { padding: 6px 16px; background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -1343,6 +1352,10 @@ html, body, #root {
 .login-overline{color:var(--gold);font-size:11px;letter-spacing:.17em;font-weight:900}
 .login-location-intro h1{margin:10px 0 9px;color:#f4f0e6;font-size:clamp(30px,5vw,48px);line-height:1.06;letter-spacing:-.045em}
 .login-location-intro p{max-width:640px;margin:0;color:#a5a3a0;font-size:clamp(14px,1.8vw,17px);line-height:1.65}
+.login-access-steps{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0;padding:0;list-style:none}
+.login-access-steps li{display:flex;align-items:center;gap:9px;min-height:42px;padding:7px 13px 7px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.035);color:#c9c6bd;font-size:12px}
+.login-access-steps li span{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(212,175,55,.16);color:var(--gold);font-weight:900}
+.login-access-steps li b{font-weight:700}
 .login-screen .login-location-grid{max-width:none;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:14px;padding:12px 0 24px}
 .login-screen .location-card{position:relative;min-height:116px;display:grid;grid-template-columns:54px 1fr 22px;align-items:center;gap:15px;padding:20px;text-align:left;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:linear-gradient(145deg,#1b1b1e,#131315);transition:transform .18s ease,border-color .18s ease,background .18s ease}
 .login-screen .location-card:hover,.login-screen .location-card:focus-visible{transform:translateY(-2px);border-color:rgba(214,175,55,.55);background:linear-gradient(145deg,#24221b,#171716);outline:2px solid rgba(214,175,55,.16);outline-offset:2px}
@@ -1375,6 +1388,8 @@ html, body, #root {
 @media(max-width:620px){
   .login-screen.login-screen-locations{padding:16px 16px calc(22px + env(safe-area-inset-bottom))}
   .login-locations-shell{min-height:calc(100dvh - 38px)}
+  .login-access-steps{display:grid;grid-template-columns:1fr;gap:7px;margin-top:16px}
+  .login-access-steps li{min-height:38px}
   .login-brand-row{gap:12px;padding-bottom:28px}
   .login-brand-row .login-logo{width:46px;height:46px;border-radius:14px}
   .login-brand-row .login-logo svg{width:24px;height:24px}

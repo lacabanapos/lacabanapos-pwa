@@ -115,6 +115,9 @@ export default function Login() {
           <span className="login-overline">ACCESO AL EQUIPO</span>
           <h1>¿Dónde vas a trabajar?</h1>
           <p>Elige una sucursal para entrar al punto de venta. El propietario puede administrar el negocio sin seleccionar una.</p>
+          <ol className="login-access-steps" aria-label="Pasos para ingresar">
+            <li><span>1</span><b>Elige sucursal</b></li><li><span>2</span><b>Selecciona tu usuario</b></li><li><span>3</span><b>Abre tu turno</b></li>
+          </ol>
         </section>
 
         {loadingLocations ? (

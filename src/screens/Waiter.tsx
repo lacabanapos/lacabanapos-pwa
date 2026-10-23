@@ -24,6 +24,7 @@ export default function Waiter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState('');
+  const [customerNameError, setCustomerNameError] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
@@ -187,6 +188,12 @@ export default function Waiter() {
 
   async function sendOrder() {
     if (!cart.length || !user || !locationId) return;
+    if (!editingOrderId && !customerName.trim()) {
+      setCustomerNameError('Escribe un nombre, mesa o referencia para identificar el pedido.');
+      setCartOpen(true);
+      return;
+    }
+    setCustomerNameError('');
     setSending(true);
     try {
       if (editingOrderId) {
@@ -221,7 +228,7 @@ export default function Waiter() {
         p_token: getOperatorToken(),
         p_location_id: locationId,
         p_operation_id: orderOperationId,
-        p_customer_name: customerName.trim() || 'Sin nombre',
+        p_customer_name: customerName.trim(),
         p_notes: orderNotes.trim() || null,
         p_items: items,
       });
@@ -351,8 +358,9 @@ export default function Waiter() {
             </div>
           )}
           {!editingOrderId && <div className="cliente-bar">
-            <label>Cliente:</label>
-            <input type="text" placeholder="Ej: Mesa 4, Carolina..." value={customerName} onChange={(e) => setCustomerName(e.target.value)} autoComplete="off" />
+            <label htmlFor="waiter-customer-name">Identificador del pedido <span aria-hidden="true">*</span></label>
+            <input id="waiter-customer-name" type="text" maxLength={100} required aria-required="true" aria-invalid={Boolean(customerNameError)} aria-describedby={customerNameError ? 'waiter-customer-error' : 'waiter-customer-help'} placeholder="Ej: Mesa 4, Carolina, Para llevar..." value={customerName} onChange={(e) => { setCustomerName(e.target.value); if (e.target.value.trim()) setCustomerNameError(''); }} autoComplete="off" />
+            <small id={customerNameError ? 'waiter-customer-error' : 'waiter-customer-help'} role={customerNameError ? 'alert' : undefined}>{customerNameError || 'Obligatorio: indica a quién pertenece o dónde se entrega.'}</small>
           </div>}
           <div className="search-bar">
             <input type="text" placeholder="Buscar producto..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
@@ -533,12 +541,17 @@ export default function Waiter() {
               )}
             </div>
             <div className="notes-box">
+              {!editingOrderId && <label className="order-identifier-field" htmlFor="waiter-order-identifier">
+                <span>Identificador del pedido <b>*</b></span>
+                <input id="waiter-order-identifier" type="text" maxLength={100} required aria-required="true" aria-invalid={Boolean(customerNameError)} value={customerName} onChange={(e) => { setCustomerName(e.target.value); if (e.target.value.trim()) setCustomerNameError(''); }} placeholder="Mesa 4, Carolina, Para llevar…" autoComplete="off" />
+                <small role={customerNameError ? 'alert' : undefined}>{customerNameError || 'Es obligatorio para que cocina y caja lo identifiquen.'}</small>
+              </label>}
               <textarea placeholder="Nota general del pedido (opcional)..." value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} />
             </div>
             <div className="sheet-footer">
               <div className="sheet-total"><span>{editingOrderId ? 'ADICIONALES' : 'TOTAL'}</span><span className="amount">${(cartTotal / 100).toFixed(2)}</span></div>
-              <button className="btn-send" onClick={sendOrder} disabled={sending}>
-                {sending ? 'Enviando...' : editingOrderId ? 'AGREGAR A COCINA' : 'ENVIAR ORDEN'}
+              <button className="btn-send" onClick={sendOrder} disabled={sending || (!editingOrderId && !customerName.trim())}>
+                {sending ? 'Enviando...' : editingOrderId ? 'AGREGAR A COCINA' : !customerName.trim() ? 'ESCRIBE EL IDENTIFICADOR' : 'ENVIAR ORDEN'}
               </button>
             </div>
             <button className="btn-discard" onClick={() => { if (confirm('¿Descartar los productos seleccionados?')) { setCart([]); setCartOpen(false); } }}>
