@@ -160,9 +160,12 @@ export default function Waiter() {
 
   function addToCart(product: Product) {
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === product.id);
-      if (existing) {
-        return prev.map((c) => c.id === product.id ? { ...c, qty: c.qty + 1 } : c);
+      // Keep each tap as its own line so the waiter can describe variants
+      // independently (e.g. queso vs. chicharrón). Plain repeated taps still
+      // increase quantity on the uncustomized line.
+      const plainLine = prev.find((item) => item.id === product.id && !item.notes.trim());
+      if (plainLine) {
+        return prev.map((item) => item === plainLine ? { ...item, qty: item.qty + 1 } : item);
       }
       return [...prev, { id: product.id, name: product.name, price_cents: product.price_cents, qty: 1, notes: '' }];
     });
@@ -517,14 +520,17 @@ export default function Waiter() {
                 <div className="empty">Carrito vacío</div>
               ) : (
                 cart.map((item, i) => (
-                  <div key={item.id} className="cart-item">
+                  <div key={`${item.id}-${i}`} className="cart-item">
                     <div className="ci-info">
                       <div className="ci-name">{item.name}</div>
                       <div className="ci-price">${(item.price_cents / 100).toFixed(2)} c/u</div>
-                      <input
-                        className="ci-note-input"
-                        type="text"
-                        placeholder="Nota (ej: sin cebolla)"
+                      <label className="ci-kitchen-note-label" htmlFor={`kitchen-note-${i}`}>Detalle para cocina</label>
+                      <textarea
+                        id={`kitchen-note-${i}`}
+                        className="ci-note-input ci-kitchen-note"
+                        rows={2}
+                        maxLength={500}
+                        placeholder="Ej: 2 de queso y 1 de chicharrón; huevo aparte"
                         value={item.notes}
                         onChange={(e) => setItemNote(i, e.target.value)}
                       />

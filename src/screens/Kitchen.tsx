@@ -25,7 +25,7 @@ export default function Kitchen() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const knownOrdersRef = useRef<Set<string>>(new Set());
@@ -79,8 +79,15 @@ export default function Kitchen() {
         waiter_name: o.waiter_name || 'Mesero no identificado',
       })) as Order[];
 
+      const previouslyKnown = knownOrdersRef.current;
       checkNewOrders(newOrders);
       setOrders(newOrders);
+      setExpandedIds((current) => {
+        const next = new Set(current);
+        newOrders.filter((order) => !previouslyKnown.has(order.id) && (order.status === 'RECEIVED' || order.status === 'PREPARING'))
+          .forEach((order) => next.add(order.id));
+        return next;
+      });
     } catch (err) {
       console.error('Error loading orders:', err);
     } finally {
@@ -214,33 +221,38 @@ export default function Kitchen() {
           <div className="empty">No hay órdenes{filter !== 'all' ? ' con este estado' : ''}</div>
         ) : (
           filtered.map((order) => (
-            <div key={order.id} className={`order-card status-${order.status}`}>
-              <div className="order-header" onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}>
+            <div key={order.id} className={`order-card kitchen-ticket status-${order.status}`}>
+              <button className="order-header" aria-expanded={expandedIds.has(order.id)} onClick={() => setExpandedIds((current) => {
+                const next = new Set(current);
+                if (next.has(order.id)) next.delete(order.id); else next.add(order.id);
+                return next;
+              })}>
                 <span className="order-id">#{order.id.slice(0, 8)}</span>
                 <span className="order-customer">{order.customer_name || ''}</span>
+                <span className="kitchen-item-count">{order.items?.reduce((total, item) => total + item.quantity, 0) || 0} productos</span>
                 <span className="order-time">{getTimeAgo(order.created_at)}</span>
                 <span className={`order-status ${order.status}`}>{STATUS_LABELS[order.status]}</span>
-                <span className={`accordion-arrow ${expandedId === order.id ? 'open' : ''}`}>
+                <span className={`accordion-arrow ${expandedIds.has(order.id) ? 'open' : ''}`}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </span>
-              </div>
+              </button>
 
-              <div className={`order-body ${expandedId === order.id ? 'open' : ''}`}>
+              <div className={`order-body ${expandedIds.has(order.id) ? 'open' : ''}`}>
                 <div className="order-inner">
                   <div className="order-waiter">
-                    <span className="waiter-name">{order.waiter_name}</span>
+                    <span className="waiter-name">Tomado por {order.waiter_name}</span>
                   </div>
+                  {order.notes && <div className="kitchen-order-note"><span>NOTA DEL PEDIDO</span><p>{order.notes}</p></div>}
                   <div className="order-items">
                     {order.items?.map((item) => (
                       <div key={item.id} className="order-item">
-                        <span className="oi-qty">{item.quantity}x</span>
+                        <span className="oi-qty">×{item.quantity}</span>
                         <div className="oi-name">
                           {item.product_name}
-                          {item.notes && <span className="oi-notes">{item.notes}</span>}
+                          {item.notes && <span className="oi-notes"><b>DETALLE</b>{item.notes}</span>}
                         </div>
-                        <span className="oi-price">${(((item.unit_price_cents ?? Math.round((item.unit_price || 0) * 100)) * item.quantity) / 100).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
