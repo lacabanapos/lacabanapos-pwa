@@ -12,7 +12,24 @@
     <title>La Cabaña - Terminal Móvil</title>
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        let hadController = Boolean(navigator.serviceWorker.controller);
+        let reloadingForUpdate = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController || reloadingForUpdate) return;
+          reloadingForUpdate = true;
+          window.location.reload();
+        });
+
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+          const checkForUpdate = () => {
+            if (document.visibilityState === 'visible') void registration.update().catch(() => {});
+          };
+          // Check at startup and whenever an installed PWA is reopened.
+          checkForUpdate();
+          window.addEventListener('pageshow', checkForUpdate);
+          document.addEventListener('visibilitychange', checkForUpdate);
+          navigator.serviceWorker.addEventListener('controllerchange', () => { hadController = true; });
+        }).catch(() => {});
       }
     </script>
   </head>

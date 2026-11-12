@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lacabana-pwa-v1';
+const CACHE_NAME = 'lacabana-pwa-v2';
 const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/logo.png'];
 
 self.addEventListener('install', (event) => {
