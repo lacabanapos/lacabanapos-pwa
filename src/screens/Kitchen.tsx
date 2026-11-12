@@ -26,9 +26,12 @@ export default function Kitchen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [recentlyUpdatedOrderIds, setRecentlyUpdatedOrderIds] = useState<Set<string>>(new Set());
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const knownOrdersRef = useRef<Set<string>>(new Set());
+  const knownItemIdsRef = useRef<Map<string, Set<string>>>(new Map());
   const orderBaselineInitializedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -80,12 +83,17 @@ export default function Kitchen() {
       })) as Order[];
 
       const previouslyKnown = knownOrdersRef.current;
-      checkNewOrders(newOrders);
+      const { addedItemIds, updatedOrderIds } = checkNewOrders(newOrders);
       setOrders(newOrders);
+      if (addedItemIds.size) {
+        setNewItemIds((current) => new Set([...current, ...addedItemIds]));
+        setRecentlyUpdatedOrderIds((current) => new Set([...current, ...updatedOrderIds]));
+      }
       setExpandedIds((current) => {
         const next = new Set(current);
         newOrders.filter((order) => !previouslyKnown.has(order.id) && (order.status === 'RECEIVED' || order.status === 'PREPARING'))
           .forEach((order) => next.add(order.id));
+        updatedOrderIds.forEach((id) => next.add(id));
         return next;
       });
     } catch (err) {
@@ -96,16 +104,36 @@ export default function Kitchen() {
   }
 
   function checkNewOrders(newOrders: Order[]) {
+    const addedItemIds = new Set<string>();
+    const updatedOrderIds = new Set<string>();
+    const currentItemIds = new Map<string, Set<string>>();
+    let hasNewOrder = false;
     for (const order of newOrders) {
       if (order.status === 'RECEIVED' && !knownOrdersRef.current.has(order.id)) {
         if (orderBaselineInitializedRef.current) {
-          playNotification();
-          if (navigator.vibrate) navigator.vibrate([120, 70, 120]);
+          hasNewOrder = true;
         }
       }
+      const itemIds = new Set((order.items || []).map((item) => item.id));
+      const previousItemIds = knownItemIdsRef.current.get(order.id);
+      if (orderBaselineInitializedRef.current && previousItemIds) {
+        for (const itemId of itemIds) {
+          if (!previousItemIds.has(itemId)) {
+            addedItemIds.add(itemId);
+            updatedOrderIds.add(order.id);
+          }
+        }
+      }
+      currentItemIds.set(order.id, itemIds);
     }
     knownOrdersRef.current = new Set(newOrders.map((o) => o.id));
+    knownItemIdsRef.current = currentItemIds;
+    if (orderBaselineInitializedRef.current && (hasNewOrder || addedItemIds.size > 0)) {
+      playNotification();
+      if (navigator.vibrate) navigator.vibrate([120, 70, 120]);
+    }
     orderBaselineInitializedRef.current = true;
+    return { addedItemIds, updatedOrderIds };
   }
 
   function playNotification() {
@@ -140,6 +168,12 @@ export default function Kitchen() {
       });
       if (error) throw error;
       if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+      if (status === 'PREPARING') {
+        const order = orders.find((item) => item.id === id);
+        const orderItemIds = new Set((order?.items || []).map((item) => item.id));
+        setNewItemIds((current) => new Set([...current].filter((itemId) => !orderItemIds.has(itemId))));
+        setRecentlyUpdatedOrderIds((current) => { const next = new Set(current); next.delete(id); return next; });
+      }
       loadOrders();
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -168,9 +202,11 @@ export default function Kitchen() {
     return Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm';
   }
 
-  const filtered = filter === 'all'
+  const filtered = (filter === 'all'
     ? orders
-    : orders.filter((o) => o.status === filter);
+    : orders.filter((o) => o.status === filter))
+    .slice()
+    .sort((a, b) => Number(recentlyUpdatedOrderIds.has(b.id)) - Number(recentlyUpdatedOrderIds.has(a.id)));
 
   return (
     <div className="kitchen-app">
@@ -222,6 +258,7 @@ export default function Kitchen() {
         ) : (
           filtered.map((order) => (
             <div key={order.id} className={`order-card kitchen-ticket status-${order.status}`}>
+              {recentlyUpdatedOrderIds.has(order.id) && <div className="kitchen-added-alert" role="status"><span aria-hidden="true">＋</span><div><strong>PRODUCTOS AGREGADOS</strong><small>Se actualizaron los artículos de este pedido. Revisa las líneas marcadas.</small></div></div>}
               <button className="order-header" aria-expanded={expandedIds.has(order.id)} onClick={() => setExpandedIds((current) => {
                 const next = new Set(current);
                 if (next.has(order.id)) next.delete(order.id); else next.add(order.id);
@@ -251,6 +288,7 @@ export default function Kitchen() {
                         <span className="oi-qty">×{item.quantity}</span>
                         <div className="oi-name">
                           {item.product_name}
+                          {newItemIds.has(item.id) && <span className="kitchen-new-item-badge">NUEVO</span>}
                           {item.notes && <span className="oi-notes"><b>DETALLE</b>{item.notes}</span>}
                         </div>
                       </div>
