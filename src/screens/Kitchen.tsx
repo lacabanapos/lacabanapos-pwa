@@ -258,7 +258,7 @@ export default function Kitchen() {
         ) : (
           filtered.map((order) => (
             <div key={order.id} className={`order-card kitchen-ticket status-${order.status}`}>
-              {recentlyUpdatedOrderIds.has(order.id) && <div className="kitchen-added-alert" role="status"><span aria-hidden="true">＋</span><div><strong>PRODUCTOS AGREGADOS</strong><small>Se actualizaron los artículos de este pedido. Revisa las líneas marcadas.</small></div></div>}
+              {recentlyUpdatedOrderIds.has(order.id) && <div className="kitchen-added-alert" role="status" aria-live="assertive"><span aria-hidden="true">!</span><div><strong>NUEVO PEDIDO · PENDIENTE DE COCINA</strong><small>Se agregaron productos a este pedido. Prepara las líneas marcadas y luego inicia la preparación.</small></div></div>}
               <button className="order-header" aria-expanded={expandedIds.has(order.id)} onClick={() => setExpandedIds((current) => {
                 const next = new Set(current);
                 if (next.has(order.id)) next.delete(order.id); else next.add(order.id);
@@ -288,7 +288,7 @@ export default function Kitchen() {
                         <span className="oi-qty">×{item.quantity}</span>
                         <div className="oi-name">
                           {item.product_name}
-                          {newItemIds.has(item.id) && <span className="kitchen-new-item-badge">NUEVO</span>}
+                          {newItemIds.has(item.id) && <span className="kitchen-new-item-badge">NUEVO · PENDIENTE</span>}
                           {item.notes && <span className="oi-notes"><b>DETALLE</b>{item.notes}</span>}
                         </div>
                       </div>

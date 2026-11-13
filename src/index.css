@@ -1337,12 +1337,12 @@ html, body, #root {
    mixed orders. Keep product variations on their own high-contrast rows. */
 .kitchen-app .orders-list{padding:14px clamp(10px,2vw,26px) calc(24px + env(safe-area-inset-bottom));}
 .kitchen-app .kitchen-ticket{margin:0 auto 14px;max-width:1440px;border-radius:14px;background:linear-gradient(145deg,#19191b,#111113);}
-.kitchen-added-alert{display:flex;align-items:center;gap:12px;margin:12px 14px 0;padding:12px 16px;border:1px solid rgba(52,211,153,.55);border-left:5px solid #34d399;border-radius:10px;background:linear-gradient(100deg,rgba(5,150,105,.24),rgba(5,150,105,.08));color:#d1fae5;animation:kitchen-added-in .25s ease-out;}
-.kitchen-added-alert>span{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;background:#34d399;color:#052e24;font-size:25px;font-weight:900;}
+.kitchen-added-alert{display:flex;align-items:center;gap:12px;margin:12px 14px 0;padding:12px 16px;border:1px solid rgba(248,113,113,.75);border-left:6px solid #ef4444;border-radius:10px;background:linear-gradient(100deg,rgba(185,28,28,.32),rgba(127,29,29,.14));color:#fee2e2;animation:kitchen-added-in .25s ease-out;}
+.kitchen-added-alert>span{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;background:#ef4444;color:#fff;font-size:23px;font-weight:950;}
 .kitchen-added-alert>div{display:grid;gap:3px;min-width:0;}
 .kitchen-added-alert strong{font-size:clamp(13px,1.4vw,17px);letter-spacing:.045em;}
-.kitchen-added-alert small{color:#b9e8d5;font-size:12px;line-height:1.4;}
-.kitchen-new-item-badge{display:inline-flex;vertical-align:middle;margin-left:9px;padding:3px 8px;border-radius:999px;background:#34d399;color:#052e24;font-size:11px;font-weight:950;letter-spacing:.07em;}
+.kitchen-added-alert small{color:#fecaca;font-size:12px;line-height:1.4;}
+.kitchen-new-item-badge{display:inline-flex;vertical-align:middle;margin-left:9px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:950;letter-spacing:.035em;}
 @keyframes kitchen-added-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
 .kitchen-app .kitchen-ticket .order-header{width:100%;min-height:74px;border:0;text-align:left;background:transparent;color:inherit;}
 .kitchen-app .kitchen-ticket .order-id{font-size:clamp(14px,1.3vw,18px);}
