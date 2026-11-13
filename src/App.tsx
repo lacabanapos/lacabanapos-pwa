@@ -5,6 +5,7 @@ import Kitchen from './screens/Kitchen';
 import Waiter from './screens/Waiter';
 import Attendance from './screens/Attendance';
 import BranchAdmin from './screens/BranchAdmin';
+import Inventory from './screens/Inventory';
 import { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/mesero" element={<ProtectedRoute><Waiter /></ProtectedRoute>} />
           <Route path="/asistencia" element={<Attendance />} />
           <Route path="/admin/sucursales" element={<ProtectedRoute><BranchAdmin /></ProtectedRoute>} />
+          <Route path="/inventario" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
           <Route path="/" element={<RoleRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

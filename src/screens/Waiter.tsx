@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { getOperatorToken } from '../lib/auth';
 import { Product, Order, CartItem, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { PackageOpen } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED: 'Recibido',
@@ -342,6 +343,7 @@ export default function Waiter() {
         </div>
         <div className="topbar-actions">
           <div className="status-dot" />
+          {(user?.role === 'ADMIN' || user?.role === 'OWNER') && <button className="btn-logout" onClick={() => navigate('/inventario')}><PackageOpen size={15}/> Inventario</button>}
           <button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Salir</button>
         </div>
       </div>

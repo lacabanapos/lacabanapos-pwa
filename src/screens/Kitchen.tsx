@@ -3,6 +3,7 @@ import { getOperatorToken, useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { PackageOpen } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED: 'Recibido',
@@ -228,6 +229,7 @@ export default function Kitchen() {
         <div className="topbar-actions">
           <span className="order-count-badge">{orders.length}</span>
           <div className="status-dot" />
+          {(user?.role === 'ADMIN' || user?.role === 'OWNER') && <button className="btn-logout" onClick={() => navigate('/inventario')}><PackageOpen size={15}/> Inventario</button>}
           {ownerInspection ? (
             <button className="btn-logout" onClick={returnToBranches}>Volver a sucursales</button>
           ) : (
